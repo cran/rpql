@@ -1,0 +1,32 @@
+export(rpql,
+	rpql.default,
+	rpqlseq,
+	build.start.fit,
+	calc.marglogL,
+	gendat.glmm,
+	lseq,
+	nb2,
+	summary.rpql)
+
+
+exportClasses(rpql)
+
+S3method(summary, rpql)
+S3method(rpql, default)
+
+import(mvtnorm, Matrix, MASS)
+importFrom(gamlss.dist, ZIP, dZIP, pZIP, qZIP, rZIP, LOGNO, dLOGNO, pLOGNO, qLOGNO, rLOGNO)
+importFrom(lme4, lmer, glmer, fixef, ranef, VarCorr, glmerControl, lmerControl, glmer.nb)
+
+importFrom(stats, dbeta, pbeta, qbeta, rbeta)
+importFrom(stats, dbinom, pbinom, qbinom, rbinom)
+importFrom(stats, dexp, pexp, qexp, rexp)
+importFrom(stats, dgamma, pgamma, qgamma, rgamma)
+importFrom(stats, dnbinom, pnbinom, qnbinom, rnbinom)
+importFrom(stats, dnorm, pnorm, qnorm, rnorm)
+importFrom(stats, dlnorm, plnorm, qlnorm, rlnorm)
+importFrom(stats, dpois, ppois, qpois, rpois)
+importFrom("stats", "D", "Gamma", "as.formula", "cov", "cov.wt",
+             "gaussian", "glm", "lm", "optimize", "poisson",
+             "reformulate")
+

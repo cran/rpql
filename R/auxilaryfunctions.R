@@ -1,0 +1,307 @@
+#################
+## Auxilary functions
+##################
+build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
+	if(!(class(lme4.fit)[1] %in% c("glmerMod","lmerMod"))) stop("lme4.fit must be fit from the lme4 package. Thanks")
+
+	out <- list(fixef = fixef(lme4.fit)+1e-4)
+	get.ranefs <- as.list(ranef(lme4.fit))
+	for(k in 1:length(get.ranefs)) { get.ranefs[[k]] <- as.matrix(get.ranefs[[k]]) }
+	if(!is.null(id)) names(get.ranefs) <- names(id)
+	out$ranef <- get.ranefs
+	out$cov.groups <- cov.groups
+	
+	get.varcors <- vector("list", length(get.ranefs)); names(get.varcors) <- names(get.ranefs)
+	for(k in 1:length(get.ranefs)) { 
+		get.varcors[[k]] <- VarCorr(lme4.fit)[[k]]+1e-4
+		}
+	out$ran.cov <- get.varcors
+
+	
+	if(length(gamma) == 1) gamma <- rep(gamma,2)
+	#cat("Building adaptive lasso weights...\n")
+	if(is.null(cov.groups)) out$pen.weights <- list(fixed = 1/abs(out$fixef)^gamma[1])
+	if(!is.null(cov.groups)) {
+		make.adl.weights <- (1/unlist(lapply(split(out$fixef,cov.groups), l2.norm)))[cov.groups] ## Split by cov.groups, calc L2 norm for each, convert to vector, then expand back...awesome!
+		names(make.adl.weights) <- names(out$fixef)
+		out$pen.weights <- list(fixed = make.adl.weights^gamma[1]) 
+		}
+
+	out$pen.weights$random <- vector("list", length(get.ranefs))
+	names(out$pen.weights$random) <- names(get.ranefs)
+	for(k in 1:length(get.ranefs)) { out$pen.weights$random[[k]] <- 1/diag(out$ran.cov[[k]]^gamma[2]) }
+	
+	return(out)
+	}
+
+
+## The marginal logL is calculated using Monte Carlo integration, exploiting the fact that conditional on all the random effects, all obs are independent. So generate a whole bunch of b's, then for b calculate the likelihood, then average over the b's
+calc.marglogL <- function(new.data, fit, B = 1000) {
+	if(!all(c("y","X","Z") %in% attributes(new.data)$names)) 
+		stop("new.data must be a list containing y, X, Z")
+	new.data$X <- as.matrix(new.data$X); n <- nrow(new.data$X); family <- fit$family
+
+	if(any(sapply(new.data$Z,nrow) != n)) 
+		stop("The number of rows in each element of new.data$Z should be equal to the number of rows in new.data$X. Thanks.")
+
+	get.ncol.Z <- sapply(new.data$Z,ncol); get.ncol.D <- sapply(fit$ran.cov,ncol)
+	if(any(get.ncol.Z != get.ncol.D)) 
+		stop("The number of columns in each in the list new.data$Z should equal to dimension of the corresponding element in the list fit$ran.cov. Thanks.")
+	rm(get.ncol.Z, get.ncol.D)
+	for(k in 1:length(D)) { new.data$Z[[k]] <- as.matrix(new.data$Z[[k]]) }
+
+	
+	loglik <- numeric(B); 
+	## Generate random effects
+	get.nonzero.D <- genb <- vector("list",length(fit$ran.cov)); 
+	for(k in 1:length(fit$ran.cov)) { 
+		get.nonzero.D[[k]] <- which(diag(fit$ran.cov[[k]]) > 0)
+		genb[[k]] <- matrix(0, B, ncol(new.data$Z[[k]]))
+		genb[[k]][,get.nonzero.D[[k]]] <- rmvnorm(B, mean = rep(0,length(get.nonzero.D[[k]])), as.matrix(fit$ran.cov[[k]][get.nonzero.D[[k]],get.nonzero.D[[k]]]))
+		}
+
+
+	eta <- new.data$X%*%fit$fixef + fit$offset
+	for(t in 1:B) {
+		eta2 <- eta
+		for(k in 1:length(fit$ran.cov)) { eta2 <- eta2 + new.data$Z[[k]]%*%genb[[k]][t,] }
+		
+		if(family$family[1] == "gaussian") tmp.loglik <- dnorm(new.data$y, mean = eta2, sd=sqrt(fit$phi), log = TRUE)
+		if(family$family[1] == "Gamma") tmp.loglik <- (dgamma(new.data$y, shape = fit$shape, scale = family$linkinv(eta2)/fit$shape, log = TRUE))
+		if(family$family[1] == "poisson") tmp.loglik <- (dpois(new.data$y, lambda=family$linkinv(eta2), log = TRUE))
+		if(family$family[1] == "binomial") tmp.loglik <- (dbinom(new.data$y, size=fit$trial.size, prob=family$linkinv(eta2), log = TRUE))
+		if(family$family[1] == "negative.binomial") tmp.loglik <- (dnbinom(new.data$y, mu=family$linkinv(eta2), size=1/fit$phi, log = TRUE))
+		if(family$family[1] == "LOGNO") tmp.loglik <- (dlnorm(new.data$y, meanlog=eta, sdlog=sqrt(fit$phi), log=TRUE))
+		if(family$family[1] == "ZIP") tmp.loglik <- (dZIP(new.data$y, mu=family$mu.linkinv(eta2), sigma=fit$zeroprob, log=TRUE))
+
+		tmp.loglik[!is.finite(tmp.loglik)] <- NA
+		loglik[t] <- exp(sum(tmp.loglik,na.rm=TRUE))
+		} 
+	
+	return(mean(loglik[is.finite(loglik)]))
+	}
+
+
+## Dataset generation for GLMM
+## Intercept must be manually included in X and Z if desired
+#id = list(cluster = rep(1:n,each=m), cluster2 = id2); beta = true.beta; D = list(cluster = true.D, cluster2 = true.D2); trial.size = 1; family = "binomial"; phi = NULL; upper.count = Inf
+gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), phi = NULL, shape = NULL, zeroprob = NULL, upper.count = Inf) {
+	X <- as.matrix(X); n <- nrow(X)
+	if(ncol(X) != length(beta)) 
+		stop("The number of columns in X should be equal to the length of beta. Thanks")
+	
+	if(sum(X[,1]) != nrow(X)) 
+		warning("Has an intercept column being included in X?")
+	if(!is.list(id) || !is.list(D) || !is.list(Z)) 
+		stop("Please supply id, Z, D, as lists. The elements in the three lists corresponding to a vector of IDs, and the model matrix and the random effects covariance matrix for those IDs, respectively. Please see the help file for further details. ")
+	if(length(unique(length(id),length(D),length(Z))) != 1) 
+		stop("The number of elements in the lists id, D, and Z should be the same. Thanks.")
+
+	get.dims.D <- sapply(D, ncol); get.ncol.Z <- sapply(Z, ncol)
+	if(any(get.dims.D!=get.ncol.Z)) 
+		stop("The dimension of each element in the list D should be equal to the number of columns in the corresponding element of list Z. Thanks.")
+
+		
+	get.lengths.id <- sapply(id,length)
+	if(any(get.lengths.id!=nrow(X))) 
+		stop("The length of each element in the list id should be equal to the number of rows in X and Z. Thanks.")
+	rm(get.lengths.id,get.dims.D, get.ncol.Z)
+
+	
+	if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","LOGNO","ZIP"))) 
+		stop("Current version does not permit specified family. Sorry!")
+	if(family$family[1] == "Gamma" & is.null(shape)) 
+		stop("Please supply shape parameter for the Gamma family (Variance = mu^2/shape).") 
+	if(family$family[1] == "negative.binomial" & is.null(phi)) 
+		stop("Please supply the overdispersion parameter phi for the negative binomial family; note the variance is parameterized as V = mu + phi*mu^2.") 
+	if(family$family[1] == "gaussian" & is.null(phi)) 
+		stop("Please supply the variance parameter phi for the Gaussian family; note the variance is parameterized as V = phi.") 
+	if(family$family[1] == "LOGNO" & is.null(phi)) 
+		stop("Please supply the variance parameter phi for the lognormal family; note the variance is parameterized as V = phi on the log scale).") 
+	if(family$family[1] == "ZIP" & is.null(zeroprob)) 
+		stop("Please supply zeroprob, the probability for obtaining a structural zero, for the ZIP family.") 
+	
+	if(is.null(colnames(X))) colnames(X) <- paste("x",1:ncol(X),sep="")
+	for(k in 1:length(Z)) { colnames(Z[[k]]) <- paste("z",k,1:ncol(Z[[k]]),sep="") }
+
+	get.n.id <- numeric(length(id)); for(k in 1:length(id)) { get.n.id[k] <- length(unique(id[[k]])) }
+	
+	for(k in 1:length(D)) { D[[k]] <- as.matrix(D[[k]]); Z[[k]] <- as.matrix(Z[[k]]) }
+	for(k in 1:length(id)) { id[[k]] <- as.integer(id[[k]]) }
+
+	
+	## Generate random effects
+	get.nonzero.D <- true.b <- vector("list",length(D)); 
+	for(k in 1:length(true.b)) { 
+		get.nonzero.D[[k]] <- which(diag(D[[k]]) > 0)
+		true.b[[k]] <- matrix(0, nrow = get.n.id[k], ncol = ncol(Z[[k]]))
+		true.b[[k]][,get.nonzero.D[[k]]] <- rmvnorm(get.n.id[k], rep(0,length(get.nonzero.D[[k]])), as.matrix(D[[k]][get.nonzero.D[[k]],get.nonzero.D[[k]]]))
+		}
+
+		
+	## Generate response	
+	sim.y <- numeric(n)
+	eta <- X%*%beta 
+	for(k in 1:length(true.b)) { eta <- eta + rowSums(Z[[k]]*true.b[[k]][id[[k]],]) }
+
+	if(family$family[1] == "gaussian") sim.y <- rnorm(n, mean = eta, sd=sqrt(phi))
+	if(family$family[1] == "LOGNO") sim.y <- rlnorm(n, meanlog=eta, sdlog=sqrt(phi))
+	if(family$family[1] == "Gamma") sim.y <- rgamma(n, shape=shape, scale=family$linkinv(eta)/shape)
+	if(family$family[1] == "binomial") sim.y <- rbinom(n, size=trial.size, prob=family$linkinv(eta))
+	for(i in 1:n) {
+		if(family$family[1] %in% c("poisson","negative.binomial","ZIP")) { 
+			if(family$family[1] == "ZIP") testsim.y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+			if(family$family[1] == "poisson") testsim.y <- rpois(1, lambda=family$linkinv(eta[i]))
+			if(family$family[1] == "negative.binomial") testsim.y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
+			try.counter <- 0
+			
+			while(testsim.y > upper.count & try.counter < 5000) {
+				if(family$family[1] == "ZIP") testsim.y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+				if(family$family[1] == "poisson") testsim.y <- rpois(1, lambda=family$linkinv(eta[i]))
+				if(family$family[1] == "negative.binomial") testsim.y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
+				try.counter <- try.counter + 1
+				}
+			sim.y[i] <- testsim.y
+			}		
+		}
+
+		
+	out <- list(y = sim.y, id = id, X = X, Z = Z, beta = beta, b = true.b, D = D, phi = phi, shape = shape, zeroprob = zeroprob, trial.size = trial.size, family = family, nonzero.beta = which(beta!=0), nonzero.b = get.nonzero.D)
+	names(out$b) <- names(out$nonzero.b) <- names(D)
+	
+	return(out)
+	}
+
+	
+	
+l2.norm <- function(x) { sqrt(sum(x^2)) }	
+
+
+lseq <- function (from, to, length, decreasing = FALSE) {
+	stopifnot(from > 0)
+	out <- 10^(seq(log10(from), log10(to), length.out = length))
+	out <- out[order(out, decreasing = decreasing)]; 
+	return(out)
+	}
+
+	
+## First deriative of MC+ penalty
+mcp.deriv <- function(x, lambda, gamma = 2) {
+	x2 <- abs(x)
+	help1 <- sapply(x2, function(theta) { lambda*(1 - theta/(gamma*(lambda+1e-8))) } )
+	out <- help1*(x2 < gamma*lambda) + 0*(x2 >= gamma*lambda)
+	return(out)
+	}
+	
+
+## Create a negative binomial family
+nb2 <- function() {
+	link <- "log"
+	linkfun <- function(mu) log(mu)
+	linkinv <- function(eta) pmax(exp(eta), .Machine$double.eps)
+	mu.eta <- function(eta) pmax(exp(eta), .Machine$double.eps)
+	variance <- function(mu,phi) mu+phi*mu^2
+	valideta <- function(eta) TRUE
+	validmu <- function(mu) all(mu > 0)
+  
+	structure(list(family = "negative.binomial", link = "log", linkfun = linkfun, linkinv = linkinv, mu.eta = mu.eta, variance = variance, valideta = valideta, validmu = validmu, name = link), class = "family")
+	}
+
+
+	    
+## First deriative of SCAD penalty
+scad.deriv <- function(x, lambda, a = 3.7) {
+	x2 <- abs(x)
+	help1 <- sapply(x2, function(theta) { max(a*lambda-theta,0)/((a-1)*(lambda+1e-8)) } )
+	out <- lambda*((x2 <= lambda) + help1*(x2 > lambda))
+	return(out)
+	}
+
+
+	
+##############
+## Hidden functions
+
+## Used only within rpql function
+build.start.fit.rpql <- function(fit, id, num.ran, gamma = 0, cov.groups = NULL) {
+	length.uniids <- numeric(length(id))
+	for(k in 1:length(id)) { 
+		length.uniids[k] <- length(unique(id[[k]])) 
+		}
+# 	print(class(fit))
+		
+	if(class(fit)[1] %in% c("glmerMod","lmerMod")) 
+		get.fit <- build.start.fit(lme4.fit = fit, gamma = gamma, cov.groups = cov.groups)
+	if(class(fit)[1] %in% c("glm","lm")) {
+		get.fit <- list(fixef = fit$coefficients, ranef = vector("list",length(id)), ran.cov = vector("list",length(id)))
+		for(k in 1:length(get.fit$ranef)) { 
+			get.fit$ranef[[k]] <- matrix(0.01,length.uniids[k],num.ran[k]) 
+			get.fit$ran.cov[[k]] <- diag(x = 1, nrow = num.ran[k]) 
+			}
+		names(get.fit$ranef) <- names(get.fit$ran.cov) <- names(id)	
+		}
+		
+		
+	return(get.fit)
+	}
+
+
+## Generate starting values for the fixed effects by fitting a lme4 object with a small number of iterations
+## For binomial and gaussian data, starting using a straight glm and setting ranef = list(cluster = matrix(0.01,n,9), ran.cov = list(cluster = diag(x = 0.5, nrow = 9))) works
+start.fixed <- function(y, X, Z, id, family = gaussian(), offset = NULL, trial.size = 1) {
+	make.dat <- data.frame(y, do.call(cbind,Z), X, do.call(cbind,id))
+	restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
+	for(k in 1:length(id)) { 
+		restring1 <- paste(restring1, "+ (",paste0(colnames(Z[[k]]),collapse="+"),"-1|",names(id)[k],")")
+		}
+	
+	if(family$family[1] == "gaussian") {
+		restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
+		restring2 <- reformulate(restring1, response = "y")		
+		final.fit <- suppressWarnings(lm(restring2, offset = offset, data = make.dat))
+		}
+		
+	if(family$family[1] == "binomial") {
+		restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
+		restring2 <- as.formula(paste("cbind(y,trial.size-y) ~", restring1))
+ 		final.fit <- suppressWarnings(glm(restring2, family = family, offset = offset, data = make.dat))
+# 		final.fit <- suppressWarnings(glmer(restring2, family = family, offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
+		}
+	
+	if(family$family[1] %in% c("ZIP","poisson")) {
+		restring2 <- reformulate(restring1, response = "y")		
+		final.fit <- suppressWarnings(glmer(restring2, family = poisson(), offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
+		}
+		
+	if(family$family[1] %in% c("Gamma")) {
+		restring2 <- reformulate(restring1, response = "y")		
+		final.fit <- suppressWarnings(glmer(restring2, family = Gamma(), offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
+		}
+
+	if(family$family[1] %in% c("LOGNO")) {
+		restring2 <- as.formula(paste("log(y) ~", restring1))
+		final.fit <- suppressWarnings(lmer(restring2, REML = FALSE, offset = offset, data = make.dat, control = lmerControl(optCtrl=list(maxfun=10))))
+		}
+	
+	if(family$family[1] %in% c("negative.binomial")) {
+		restring2 <- reformulate(restring1, response = "y")		
+		final.fit <- suppressWarnings(glmer.nb(restring2, offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
+		}
+
+	return(final.fit)
+	}
+
+
+
+# ## Evaluate values of penalty functions
+# pen.val <- function(beta,lambda,pen.type) {
+# 	if(pen.type == "lasso") out <- sum(lambda*abs(beta))
+# 	if(pen.type == "scad") { 
+# 		a <- 3.7
+# 		out <- sum(lambda*abs(beta)*(abs(beta)<lambda) - (beta^2 - 2*3.7*lambda*abs(beta) + lambda^2)/(2*(a-1))*(lambda < abs(beta) & abs(beta) < a*lambda) + lambda^2*(a+1)/2*(abs(beta) > lambda)) }
+# 
+# 	return(out)
+# 	}
+	
+	
+	
