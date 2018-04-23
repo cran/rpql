@@ -83,26 +83,26 @@ X <- model.matrix(~ ., data = X)
 colnames(X) <- paste("X",1:ncol(X),sep="")
 
 Z <- X[,1:5] ## Random effects model matrix taken as first five columns
-true.beta <- c(-0.1,1,-1,1,-1,1,-1,0,0,0,0,0) 
-true.D <- matrix(0,ncol(Z),ncol(Z))
-true.D[1:3,1:3] <- matrix(c(9,4.8,0.6,4.8,4,1,0.6,1,1),
+true_betas <- c(-0.1,1,-1,1,-1,1,-1,0,0,0,0,0) 
+true_D <- matrix(0,ncol(Z),ncol(Z))
+true_D[1:3,1:3] <- matrix(c(9,4.8,0.6,4.8,4,1,0.6,1,1),
 	3,3,byrow=TRUE) ## 3 important random effects 
 
-sim.y <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true.beta, 
-	Z = list(cluster = Z), D = list(cluster = true.D), family = binomial())
+simy <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true_betas, 
+	Z = list(cluster = Z), D = list(cluster = true_D), family = binomial())
 
   
 \donttest{
 library(lme4)
-dat <- data.frame(y = sim.y$y, sim.y$X, sim.y$Z$cluster, sim.y$id)
-do.full.fit <- glmer(y ~ X - 1 + (Z - 1 | cluster), data = dat, 
+dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
+fit_satlme4 <- glmer(y ~ X - 1 + (Z - 1 | cluster), data = dat, 
 	family = "binomial")
-sat.fit <- build.start.fit(do.full.fit, id = sim.y$id, gamma = 2, 
+fit_sat <- build.start.fit(fit_satlme4, id = simy$id, gamma = 2, 
 	cov.groups = c(1:9,10,10,10)) 
 
-new.fit <- rpql(y = sim.y$y, X = sim.y$X, Z = sim.y$Z, id = sim.y$id, lambda = 0.01, 
-	pen.type = "adl", pen.weights = sat.fit$pen.weights,
-	cov.groups = sat.fit$cov.groups, start = sat.fit, family = binomial())  
+new.fit <- rpql(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, lambda = 0.01, 
+	pen.type = "adl", pen.weights = fit_sat$pen.weights,
+	cov.groups = fit_sat$cov.groups, start = fit_sat, family = binomial())  
 	}
 
 }

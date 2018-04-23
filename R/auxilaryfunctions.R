@@ -12,9 +12,8 @@ build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
 	out$cov.groups <- cov.groups
 	
 	get.varcors <- vector("list", length(get.ranefs)); names(get.varcors) <- names(get.ranefs)
-	for(k in 1:length(get.ranefs)) { 
+	for(k in 1:length(get.ranefs)) 
 		get.varcors[[k]] <- VarCorr(lme4.fit)[[k]]+1e-4
-		}
 	out$ran.cov <- get.varcors
 
 	
@@ -39,52 +38,85 @@ build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
 calc.marglogL <- function(new.data, fit, B = 1000) {
 	if(!all(c("y","X","Z") %in% attributes(new.data)$names)) 
 		stop("new.data must be a list containing y, X, Z")
-	new.data$X <- as.matrix(new.data$X); n <- nrow(new.data$X); family <- fit$family
+	new.data$X <- as.matrix(new.data$X)
+	n <- nrow(new.data$X)
+	family <- fit$family
 
 	if(any(sapply(new.data$Z,nrow) != n)) 
 		stop("The number of rows in each element of new.data$Z should be equal to the number of rows in new.data$X. Thanks.")
 
-	get.ncol.Z <- sapply(new.data$Z,ncol); get.ncol.D <- sapply(fit$ran.cov,ncol)
-	if(any(get.ncol.Z != get.ncol.D)) 
+	get_ncolZ <- sapply(new.data$Z,ncol)
+	get_ncolranef_covmat <- sapply(fit$ran.cov,ncol)
+	if(any(get_ncolZ != get_ncolranef_covmat)) 
 		stop("The number of columns in each in the list new.data$Z should equal to dimension of the corresponding element in the list fit$ran.cov. Thanks.")
-	rm(get.ncol.Z, get.ncol.D)
-	for(k in 1:length(D)) { new.data$Z[[k]] <- as.matrix(new.data$Z[[k]]) }
+	rm(get_ncolZ, get_ncolranef_covmat)
+	for(k in 1:length(fit$ran.cov)) 
+          new.data$Z[[k]] <- as.matrix(new.data$Z[[k]])
 
 	
 	loglik <- numeric(B); 
 	## Generate random effects
-	get.nonzero.D <- genb <- vector("list",length(fit$ran.cov)); 
+	get_nonzeroranef_covmat <- genb <- vector("list",length(fit$ran.cov)); 
 	for(k in 1:length(fit$ran.cov)) { 
-		get.nonzero.D[[k]] <- which(diag(fit$ran.cov[[k]]) > 0)
+		get_nonzeroranef_covmat[[k]] <- which(diag(fit$ran.cov[[k]]) > 0)
 		genb[[k]] <- matrix(0, B, ncol(new.data$Z[[k]]))
-		genb[[k]][,get.nonzero.D[[k]]] <- rmvnorm(B, mean = rep(0,length(get.nonzero.D[[k]])), as.matrix(fit$ran.cov[[k]][get.nonzero.D[[k]],get.nonzero.D[[k]]]))
+		genb[[k]][,get_nonzeroranef_covmat[[k]]] <- rmvnorm(B, mean = rep(0,length(get_nonzeroranef_covmat[[k]])), as.matrix(fit$ran.cov[[k]][get_nonzeroranef_covmat[[k]],get_nonzeroranef_covmat[[k]]]))
 		}
 
 
 	eta <- new.data$X%*%fit$fixef + fit$offset
 	for(t in 1:B) {
 		eta2 <- eta
-		for(k in 1:length(fit$ran.cov)) { eta2 <- eta2 + new.data$Z[[k]]%*%genb[[k]][t,] }
+		for(k in 1:length(fit$ran.cov)) 
+               eta2 <- eta2 + new.data$Z[[k]]%*%genb[[k]][t,]
 		
-		if(family$family[1] == "gaussian") tmp.loglik <- dnorm(new.data$y, mean = eta2, sd=sqrt(fit$phi), log = TRUE)
-		if(family$family[1] == "Gamma") tmp.loglik <- (dgamma(new.data$y, shape = fit$shape, scale = family$linkinv(eta2)/fit$shape, log = TRUE))
-		if(family$family[1] == "poisson") tmp.loglik <- (dpois(new.data$y, lambda=family$linkinv(eta2), log = TRUE))
-		if(family$family[1] == "binomial") tmp.loglik <- (dbinom(new.data$y, size=fit$trial.size, prob=family$linkinv(eta2), log = TRUE))
-		if(family$family[1] == "negative.binomial") tmp.loglik <- (dnbinom(new.data$y, mu=family$linkinv(eta2), size=1/fit$phi, log = TRUE))
-		if(family$family[1] == "LOGNO") tmp.loglik <- (dlnorm(new.data$y, meanlog=eta, sdlog=sqrt(fit$phi), log=TRUE))
-		if(family$family[1] == "ZIP") tmp.loglik <- (dZIP(new.data$y, mu=family$mu.linkinv(eta2), sigma=fit$zeroprob, log=TRUE))
+		if(family$family[1] == "gaussian") 
+               tmp_loglik <- dnorm(new.data$y, mean = eta2, sd=sqrt(fit$phi), log = TRUE)
+		if(family$family[1] == "Gamma") 
+               tmp_loglik <- (dgamma(new.data$y, shape = fit$shape, scale = family$linkinv(eta2)/fit$shape, log = TRUE))
+		if(family$family[1] == "poisson") 
+               tmp_loglik <- (dpois(new.data$y, lambda=family$linkinv(eta2), log = TRUE))
+		if(family$family[1] == "binomial") 
+               tmp_loglik <- (dbinom(new.data$y, size=fit$trial.size, prob=family$linkinv(eta2), log = TRUE))
+		if(family$family[1] == "negative.binomial") 
+               tmp_loglik <- (dnbinom(new.data$y, mu=family$linkinv(eta2), size=1/fit$phi, log = TRUE))
+		if(family$family[1] == "LOGNO") 
+               tmp_loglik <- (dlnorm(new.data$y, meanlog=eta, sdlog=sqrt(fit$phi), log=TRUE))
+		if(family$family[1] == "ZIP") 
+               tmp_loglik <- (dZIP(new.data$y, mu=family$mu.linkinv(eta2), sigma=fit$zeroprob, log=TRUE))
 
-		tmp.loglik[!is.finite(tmp.loglik)] <- NA
-		loglik[t] <- exp(sum(tmp.loglik,na.rm=TRUE))
+		tmp_loglik[!is.finite(tmp_loglik)] <- NA
+		loglik[t] <- exp(sum(tmp_loglik,na.rm=TRUE))
 		} 
 	
 	return(mean(loglik[is.finite(loglik)]))
 	}
 
 
+fillin.control <- function(control) {
+	if(!("tol" %in% names(control))) 
+          control$tol <- 1e-4
+	if(!("maxit" %in% names(control))) 
+          control$maxit <- 100
+	if(!("trace" %in% names(control))) 
+          control$trace <- FALSE
+	if(!("restarts" %in% names(control))) 
+          control$restarts <- 5
+	if(!("scad.a" %in% names(control))) 
+          control$scad.a <- 3.7
+	if(!("mcp.gamma" %in% names(control))) 
+          control$mcp.gamma <- 2
+	if(!("seed" %in% names(control))) 
+          control$seed <- NULL 
+     
+     return(control)
+     }
+	
+	
+	
 ## Dataset generation for GLMM
 ## Intercept must be manually included in X and Z if desired
-#id = list(cluster = rep(1:n,each=m), cluster2 = id2); beta = true.beta; D = list(cluster = true.D, cluster2 = true.D2); trial.size = 1; family = "binomial"; phi = NULL; upper.count = Inf
+#id = list(cluster = rep(1:n,each=m), cluster2 = id2); beta = truebeta; D = list(cluster = true.D, cluster2 = true.D2); trial.size = 1; family = "binomial"; phi = NULL; upper.count = Inf
 gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), phi = NULL, shape = NULL, zeroprob = NULL, upper.count = Inf) {
 	X <- as.matrix(X); n <- nrow(X)
 	if(ncol(X) != length(beta)) 
@@ -97,15 +129,16 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 	if(length(unique(length(id),length(D),length(Z))) != 1) 
 		stop("The number of elements in the lists id, D, and Z should be the same. Thanks.")
 
-	get.dims.D <- sapply(D, ncol); get.ncol.Z <- sapply(Z, ncol)
-	if(any(get.dims.D!=get.ncol.Z)) 
+	get_dimD <- sapply(D, ncol)
+	get_ncolZ <- sapply(Z, ncol)
+	if(any(get_dimD!=get_ncolZ)) 
 		stop("The dimension of each element in the list D should be equal to the number of columns in the corresponding element of list Z. Thanks.")
 
 		
 	get.lengths.id <- sapply(id,length)
 	if(any(get.lengths.id!=nrow(X))) 
 		stop("The length of each element in the list id should be equal to the number of rows in X and Z. Thanks.")
-	rm(get.lengths.id,get.dims.D, get.ncol.Z)
+	rm(get.lengths.id,get_dimD, get_ncolZ)
 
 	
 	if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","LOGNO","ZIP"))) 
@@ -121,52 +154,71 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 	if(family$family[1] == "ZIP" & is.null(zeroprob)) 
 		stop("Please supply zeroprob, the probability for obtaining a structural zero, for the ZIP family.") 
 	
-	if(is.null(colnames(X))) colnames(X) <- paste("x",1:ncol(X),sep="")
-	for(k in 1:length(Z)) { colnames(Z[[k]]) <- paste("z",k,1:ncol(Z[[k]]),sep="") }
+	if(is.null(colnames(X))) 
+          colnames(X) <- paste("x",1:ncol(X),sep="")
+	for(k in 1:length(Z)) 
+          colnames(Z[[k]]) <- paste("z",k,1:ncol(Z[[k]]),sep="")
 
-	get.n.id <- numeric(length(id)); for(k in 1:length(id)) { get.n.id[k] <- length(unique(id[[k]])) }
+	get.n.id <- numeric(length(id))
+	for(k in 1:length(id)) 
+          get.n.id[k] <- length(unique(id[[k]]))
 	
-	for(k in 1:length(D)) { D[[k]] <- as.matrix(D[[k]]); Z[[k]] <- as.matrix(Z[[k]]) }
-	for(k in 1:length(id)) { id[[k]] <- as.integer(id[[k]]) }
+	for(k in 1:length(D)) { 
+          D[[k]] <- as.matrix(D[[k]])
+          Z[[k]] <- as.matrix(Z[[k]]) 
+          }
+	for(k in 1:length(id)) { 
+          id[[k]] <- as.integer(id[[k]]) 
+          }
 
 	
 	## Generate random effects
-	get.nonzero.D <- true.b <- vector("list",length(D)); 
-	for(k in 1:length(true.b)) { 
-		get.nonzero.D[[k]] <- which(diag(D[[k]]) > 0)
-		true.b[[k]] <- matrix(0, nrow = get.n.id[k], ncol = ncol(Z[[k]]))
-		true.b[[k]][,get.nonzero.D[[k]]] <- rmvnorm(get.n.id[k], rep(0,length(get.nonzero.D[[k]])), as.matrix(D[[k]][get.nonzero.D[[k]],get.nonzero.D[[k]]]))
+	get_nonzeroD <- trueb <- vector("list",length(D)); 
+	for(k in 1:length(trueb)) { 
+		get_nonzeroD[[k]] <- which(diag(D[[k]]) > 0)
+		trueb[[k]] <- matrix(0, nrow = get.n.id[k], ncol = ncol(Z[[k]]))
+		trueb[[k]][,get_nonzeroD[[k]]] <- rmvnorm(get.n.id[k], rep(0,length(get_nonzeroD[[k]])), as.matrix(D[[k]][get_nonzeroD[[k]],get_nonzeroD[[k]]]))
 		}
 
 		
 	## Generate response	
-	sim.y <- numeric(n)
+	sim_y <- numeric(n)
 	eta <- X%*%beta 
-	for(k in 1:length(true.b)) { eta <- eta + rowSums(Z[[k]]*true.b[[k]][id[[k]],]) }
+	for(k in 1:length(trueb)) { eta <- eta + rowSums(Z[[k]]*trueb[[k]][id[[k]],]) }
 
-	if(family$family[1] == "gaussian") sim.y <- rnorm(n, mean = eta, sd=sqrt(phi))
-	if(family$family[1] == "LOGNO") sim.y <- rlnorm(n, meanlog=eta, sdlog=sqrt(phi))
-	if(family$family[1] == "Gamma") sim.y <- rgamma(n, shape=shape, scale=family$linkinv(eta)/shape)
-	if(family$family[1] == "binomial") sim.y <- rbinom(n, size=trial.size, prob=family$linkinv(eta))
+	if(family$family[1] == "gaussian") 
+          sim_y <- rnorm(n, mean = eta, sd=sqrt(phi))
+	if(family$family[1] == "LOGNO") 
+          sim_y <- rlnorm(n, meanlog=eta, sdlog=sqrt(phi))
+	if(family$family[1] == "Gamma") 
+          sim_y <- rgamma(n, shape=shape, scale=family$linkinv(eta)/shape)
+	if(family$family[1] == "binomial") 
+          sim_y <- rbinom(n, size=trial.size, prob=family$linkinv(eta))
 	for(i in 1:n) {
 		if(family$family[1] %in% c("poisson","negative.binomial","ZIP")) { 
-			if(family$family[1] == "ZIP") testsim.y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
-			if(family$family[1] == "poisson") testsim.y <- rpois(1, lambda=family$linkinv(eta[i]))
-			if(family$family[1] == "negative.binomial") testsim.y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
+			if(family$family[1] == "ZIP") 
+                    testsim_y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+			if(family$family[1] == "poisson") 
+                    testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
+			if(family$family[1] == "negative.binomial") 
+                    testsim_y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
 			try.counter <- 0
 			
-			while(testsim.y > upper.count & try.counter < 5000) {
-				if(family$family[1] == "ZIP") testsim.y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
-				if(family$family[1] == "poisson") testsim.y <- rpois(1, lambda=family$linkinv(eta[i]))
-				if(family$family[1] == "negative.binomial") testsim.y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
+			while(testsim_y > upper.count & try.counter < 5000) {
+				if(family$family[1] == "ZIP") 
+                         testsim_y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+				if(family$family[1] == "poisson") 
+                         testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
+				if(family$family[1] == "negative.binomial") 
+                         testsim_y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
 				try.counter <- try.counter + 1
 				}
-			sim.y[i] <- testsim.y
+			sim_y[i] <- testsim_y
 			}		
 		}
 
 		
-	out <- list(y = sim.y, id = id, X = X, Z = Z, beta = beta, b = true.b, D = D, phi = phi, shape = shape, zeroprob = zeroprob, trial.size = trial.size, family = family, nonzero.beta = which(beta!=0), nonzero.b = get.nonzero.D)
+	out <- list(y = sim_y, id = id, X = X, Z = Z, beta = beta, b = trueb, D = D, phi = phi, shape = shape, zeroprob = zeroprob, trial.size = trial.size, family = family, nonzero.beta = which(beta!=0), nonzero.b = get_nonzeroD)
 	names(out$b) <- names(out$nonzero.b) <- names(D)
 	
 	return(out)
@@ -302,6 +354,5 @@ start.fixed <- function(y, X, Z, id, family = gaussian(), offset = NULL, trial.s
 # 
 # 	return(out)
 # 	}
-	
 	
 	

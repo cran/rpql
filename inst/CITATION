@@ -1,0 +1,30 @@
+citHeader("To cite the 'rpql' package in publications use:")
+
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date, perl = TRUE)
+vers <- paste("R package version", meta$Version)
+
+citEntry(entry="Manual",
+         title = "rpql: Regularized PQL for Joint Selection in GLMMs",
+         author = personList(as.person("Francis K. C. Hui")),
+         year = year,
+         note = vers,
+
+         textVersion =
+         paste("Francis K. C. Hui (",
+               year,
+               "). rpql: Regularized PQL for Joint Selection in GLMMs.",
+               vers, ".", sep=""))
+
+citEntry(entry="Article",
+         title = "Joint Selection in Mixed Models using Regularized PQL",
+         author = personList(as.person("F. K. C. Hui"), as.person("S. Mueller"), as.person("A. H. Welsh")),
+    	 journal = "Journal of the American Statistical Association",
+         year     = "2017",
+         volume      = "112",
+          pages   = "1323--1333",
+
+         textVersion =
+         paste("F.K.C., Mueller, S., and Welsh, A.H. (2017)",
+  	       "Joint Selection in Mixed Models using Regularized PQL",
+               "Journal of the American Statistical Association, 112, 1323-1333.")
+)

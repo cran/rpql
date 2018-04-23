@@ -89,12 +89,12 @@ H <- abs(outer(1:p, 1:p, "-"))
 X <- cbind(1,rmvnorm(n*m,rep(0,p),sigma=0.5^H)); 
 
 Z <- X 
-true.beta <- c(1,3,2,1.5,-1,0,0,0,0) ## 5 important fixed effects 
-true.D <- matrix(0,p+1,p+1) ## 3 important random effects
-true.D[1:3,1:3] <- matrix(c(9,4.8,0.6,4.8,4,1,0.6,1,1),3,3,byrow=TRUE)
+true_betas <- c(1,3,2,1.5,-1,0,0,0,0) ## 5 important fixed effects 
+true_D <- matrix(0,p+1,p+1) ## 3 important random effects
+true_D[1:3,1:3] <- matrix(c(9,4.8,0.6,4.8,4,1,0.6,1,1),3,3,byrow=TRUE)
 
-sim.y <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true.beta, 
-	Z = list(cluster = Z), D = list(cluster = true.D), phi = 1, family = gaussian()) 
+simy <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true_betas, 
+	Z = list(cluster = Z), D = list(cluster = true_D), phi = 1, family = gaussian()) 
 ## Notice how id, Z, and D all are lists with one element, and that 
 ## the name of the first element (a generic name "cluster") is the 
 ## same for all three lists. 
@@ -105,16 +105,16 @@ sim.y <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true.be
 ## to cluster 1, and so on. 
 
 \donttest{
-dat <- data.frame(y = sim.y$y, sim.y$X, sim.y$Z$cluster, sim.y$id)
-fit.lme4 <- lmer(y ~ X - 1 + (Z - 1 | cluster), data = dat,
+dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
+fit_satlme4 <- lmer(y ~ X - 1 + (Z - 1 | cluster), data = dat,
 	REML = FALSE)
-sat.fit <- build.start.fit(fit.lme4, gamma = 2)
+fit_sat <- build.start.fit(fit_satlme4, gamma = 2)
 
 
-lambda.seq <- lseq(1e-4,1,length=100)
-fit <- rpqlseq(y = sim.y$y, X = sim.y$X, Z = sim.y$Z, id = sim.y$id, 
-	family = gaussian(), lambda = lambda.seq, pen.type = "adl", 
-	pen.weights = sat.fit$pen.weights, start = sat.fit)
+lambda_seq <- lseq(1e-4,1,length=100)
+fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
+	family = gaussian(), lambda = lambda_seq, pen.type = "adl", 
+	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
 summary(fit$best.fit[[3]])  
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
@@ -133,11 +133,11 @@ ids <- list(samples = rep(1:50,each=4), creek = rep(1:10,each=20))
 ## 	for samples nested within creek.
 Zs <- list(samples = X, creek = X) 
 
-true.beta <- -0.1 
-## Please ensure each element of true.D is a matrix
-true.D <- list(samples = as.matrix(0.001), creek = as.matrix(1)) 
+true_betas <- -0.1 
+## Please ensure each element of true_D is a matrix
+true_D <- list(samples = as.matrix(0.001), creek = as.matrix(1)) 
 
-sim.y <- gendat.glmm(id = ids, X = X, beta = true.beta, Z = Zs, D = true.D, 
+simy <- gendat.glmm(id = ids, X = X, beta = true_betas, Z = Zs, D = true_D, 
 	trial.size = 1, family = binomial())
 
 \donttest{
@@ -146,14 +146,14 @@ sim.y <- gendat.glmm(id = ids, X = X, beta = true.beta, Z = Zs, D = true.D,
 ## Here is another way of constructing the adaptive weights:
 ## Use the fact that rpql can do a final fit based on maximum likelihood
 ## to obtain a good saturated fit.
-sat.fit <- rpql(y = sim.y$y, X = sim.y$X, Z = sim.y$Z, id = sim.y$id, 
+fit_sat <- rpql(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
 	family = binomial(), lambda = 0, hybrid = TRUE)
-sat.fit <- build.start.fit(sat.fit$hybrid, gamma = 2)
+fit_sat <- build.start.fit(fit_sat$hybrid, gamma = 2)
 	
-lambda.seq <- lseq(1e-6,1,length=100)
-fit <- rpqlseq(y = sim.y$y, X = sim.y$X, Z = sim.y$Z, id = sim.y$id, 
-	family = binomial(), lambda = lambda.seq, pen.type = "adl", 
-	pen.weights = sat.fit$pen.weights, start = sat.fit)
+lambda_seq <- lseq(1e-6,1,length=100)
+fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
+	family = binomial(), lambda = lambda_seq, pen.type = "adl", 
+	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
 summary(fit$best.fit[[3]])  
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
