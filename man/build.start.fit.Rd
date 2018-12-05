@@ -57,7 +57,11 @@ A list containing the following elements
   }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \section{Warnings}{
   \itemize{
@@ -92,7 +96,7 @@ simy <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true_bet
 	Z = list(cluster = Z), D = list(cluster = true_D), family = binomial())
 
   
-\donttest{
+\dontrun{
 library(lme4)
 dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
 fit_satlme4 <- glmer(y ~ X - 1 + (Z - 1 | cluster), data = dat, 

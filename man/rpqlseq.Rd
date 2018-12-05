@@ -43,7 +43,11 @@ An object of class "rpql" containing the following elements:
 \item{lambda}{The sequence of tuning parameters considered.}
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 
 \seealso{

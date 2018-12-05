@@ -38,7 +38,11 @@ It is somewhat of an art form to construct a good sequence of tuning parameter v
   }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 
 \seealso{

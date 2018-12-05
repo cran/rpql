@@ -66,7 +66,11 @@ A list containing the following elements
   }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \seealso{
 \code{\link{rpql}} for fitting and performing model selection in GLMMs using regularized PQL.
@@ -104,7 +108,7 @@ simy <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true_bet
 ## In turn, the first 12 rows of X and Z$cluster correspond 
 ## to cluster 1, and so on. 
 
-\donttest{
+\dontrun{
 dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
 fit_satlme4 <- lmer(y ~ X - 1 + (Z - 1 | cluster), data = dat,
 	REML = FALSE)
@@ -140,7 +144,7 @@ true_D <- list(samples = as.matrix(0.001), creek = as.matrix(1))
 simy <- gendat.glmm(id = ids, X = X, beta = true_betas, Z = Zs, D = true_D, 
 	trial.size = 1, family = binomial())
 
-\donttest{
+\dontrun{
 
 ## Construct a solution path use adaptive LASSO for selection
 ## Here is another way of constructing the adaptive weights:

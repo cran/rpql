@@ -45,7 +45,11 @@ A list (some of which is printed) containing the following elements:
 \item{nonzero.ranef}{A list with each element being a vector indexing which of the estimated random effects are non-zero, i.e. which of the diagonal elements in the corresponding element of \code{ran.cov} are non-zero.}
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \seealso{\code{\link{rpql}} for fitting and performing model selection in GLMMs using regularized PQL.}
 

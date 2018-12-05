@@ -39,7 +39,11 @@ Admittedly, this function is not really useful for fitting the GLMM \emph{per-se
   }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 
 \section{Warnings}{

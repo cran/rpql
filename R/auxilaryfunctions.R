@@ -17,7 +17,8 @@ build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
 	out$ran.cov <- get.varcors
 
 	
-	if(length(gamma) == 1) gamma <- rep(gamma,2)
+	if(length(gamma) == 1) 
+		gamma <- rep(gamma,2)
 	#cat("Building adaptive lasso weights...\n")
 	if(is.null(cov.groups)) out$pen.weights <- list(fixed = 1/abs(out$fixef)^gamma[1])
 	if(!is.null(cov.groups)) {

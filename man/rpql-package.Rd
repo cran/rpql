@@ -21,7 +21,11 @@ License: \tab GPL-2\cr
 }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \references{
 \itemize{

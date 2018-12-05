@@ -20,7 +20,11 @@ Used in the form \code{rpql(y, ..., family = nb2(), ...)}.
 An object of class "family"
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \seealso{
 \code{\link{negative.binomial}} in the \code{MASS} package for another example of a negative.binomial family. 

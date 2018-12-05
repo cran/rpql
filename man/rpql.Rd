@@ -124,12 +124,10 @@ How to choose the tuning parameters for penalized regression is an active area o
 
 \item A BIC-type criterion that penalizes a value of \eqn{\log(n)} for every non-zero fixed effect coefficient, and, for each set of random effects, penalizes a value of \eqn{\log(n)} for every non-zero, unique element in covariance matrix for that set. This combination of penalties is the one used in the package \code{lme4}. 
 
-\item A hybrid information criterion that penalizes a value \eqn{\log(n)} for every non-zero fixed effect coefficient, and, for each set of random effects, penalizes a value of 2 for every non-zero random effect coefficient in that set.
-
-\item A hybrid information criterion that penalizes a value \eqn{\log(n)} for every non-zero fixed effect coefficient, and, for each set of random effects, penalizes a value of 1 for every non-zero random effect coefficient in that set.
+\item Three hybrid information criteria that penalizes a value \eqn{\log(n)} for every non-zero fixed effect coefficient, and, for each set of random effects, penalizes a value of 2/1/0.5 for every non-zero random effect coefficient in that set.
 }
 
-Selection consistency for all but the first AIC criteria have been established, although empirically performance may differ. We generally prefer the third and fifth criteria i.e., the second BIC-type and hybrid type criterion respectively, although it is recommended that the user tries several of them and see how results differ! 
+Selection consistency for all but the first AIC criteria have been established, although empirically performance may differ. We generally prefer the three hybrid criterion, although it is recommended that the user tries several of them and see how results differ! 
 
 }
 
@@ -192,7 +190,11 @@ An object of class "rpql" containing the following elements:
   }
 }
 
-\author{ Francis K.C. Hui \email{fhui28@gmail.com} }
+\author{
+\packageAuthor{rpql}
+
+Maintainer: \packageMaintainer{rpql}
+}
 
 \section{Warnings}{
 \itemize{
@@ -239,7 +241,7 @@ simy <- gendat.glmm(id = list(cluster=rep(1:n,each=m)), X = X, beta = true_betas
 	Z = list(cluster=Z), D = list(cluster=true_D), family = poisson()) 
 
 	
-\donttest{
+\dontrun{
 ## Construct a solution path using adaptive LASSO for selection 
 dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
 fit_satlme4 <- glmer(y ~ X - 1 + (Z - 1 | cluster), data = dat,
@@ -290,7 +292,7 @@ simy <- gendat.glmm(id = list(cluster=rep(1:n,each=m)), X = X,
   beta = true_betas, Z = list(cluster=Z), D = list(cluster=true_D), family = binomial()) 
 
 	
-\donttest{
+\dontrun{
 ## Construct a solution path using adaptive LASSO for selection 
 dat <- data.frame(y = simy$y, simy$X, simy$Z$cluster, simy$id)
 fit_satlme4 <- glmer(y ~ X - 1 + (Z - 1 | cluster), data = dat, 
@@ -335,7 +337,7 @@ true_D <- list(samples = as.matrix(0.001), creek = as.matrix(1))
 simy <- gendat.glmm(id = ids, X = X, beta = true_betas, Z = Zs, 
 	D = true_D, trial.size = 1, family = binomial())
 
-\donttest{
+\dontrun{
 ## Construct a solution path use adaptive LASSO for selection
 ## Here is another way of constructing the adaptive weights:
 ## Use the fact that rpql can do a final fit based on maximum likelihood
@@ -356,7 +358,7 @@ summary(fit$best.fit[[3]])
 ##################
 ## Example 4: Linear mixed models on Alfalfa split-plot data
 
-\donttest{
+\dontrun{
 
 library(nlme)
 data(Alfalfa)
@@ -396,7 +398,7 @@ fit <- rpqlseq(y = Alfalfa$Yield, X = X, Z = Z, id = ids,
 ##################
 ## Example 5: Linear mixed models on sleep study dataset
 
-\donttest{
+\dontrun{
 data(sleepstudy)
 
 ## How you fit it in lme4
@@ -436,7 +438,7 @@ fit <- rpqlseq(y = sleepstudy$Reaction, X = X, Z = Z, id = ids,
 ## Example 6: GLMM with lognormal responses
 ## Fixed effects selection only
 
-\donttest{
+\dontrun{
 n <- 50; m <- 10; p <- 8; 
 H <- abs(outer(1:p, 1:p, "-")) 
 X <- cbind(1,rmvnorm(n*m,rep(0,p),sigma=0.5^H)); 
