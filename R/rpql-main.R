@@ -9,6 +9,10 @@
 ## - Implemented hybrid IC with model complexity penalty of 0.5
 
 ## TODO: 1) consider using threshold operators, including LLA and threshold; 
+## 2) allow option to turn off warm starts. Tends to work better for Gaussian responses (please see updaterpqlfunctions.R script); 
+## 3) Consider scaling factor to include penalty for random effects ala group lasso; see folder testingwithsarbesh
+## 4) trial.size > 1 seems to run into issues
+## 5) Very slow for Gaussian responses!
 ##############
 # library(mvtnorm)
 # library(Matrix)

@@ -1,9 +1,9 @@
-ce76a4a082d70f632d7df0b50c52689a *DESCRIPTION
-7bba7f9546437d7255e9d61682b93a6c *NAMESPACE
+8c0e60a1bfeef63bba7d89a9b34dc866 *DESCRIPTION
+22a508e44faef8c1711352c975140bb6 *NAMESPACE
 0b775898df5fbfe341bc7c2b4584fd16 *R/RcppExports.R
 a92bdfeeddb1ac571d61b54ff1c6c895 *R/auxilaryfunctions.R
-a580d08a4a35576ed88d61d495f58b86 *R/rpql-main.R
-aeeca46f269cb7126efe5c2c385ccc5e *build/partial.rdb
+65183cf8f4d5e6919fe7b6292b25ff3e *R/rpql-main.R
+fac4312b215dbe96f449dc5b4f3c35e8 *build/partial.rdb
 ba37eea37e24babeedb3032bde9adaec *inst/CITATION
 192698edad24aa1290a28531f196fab0 *man/build.start.fit.Rd
 c29013351ac2c6b55a9c220bb0ffab7c *man/calc.marglogL.Rd

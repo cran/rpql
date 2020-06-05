@@ -9,8 +9,6 @@ export(rpql,
 	summary.rpql)
 
 
-exportClasses(rpql)
-
 S3method(summary, rpql)
 S3method(rpql, default)
 
@@ -29,5 +27,6 @@ importFrom(stats, dnbinom, pnbinom, qnbinom, rnbinom)
 importFrom(stats, dnorm, pnorm, qnorm, rnorm)
 importFrom(stats, dlnorm, plnorm, qlnorm, rlnorm)
 importFrom(stats, dpois, ppois, qpois, rpois)
+importFrom(stats, dunif, punif, qunif, runif)
 importFrom(stats, D, Gamma, as.formula, cov, cov.wt, gaussian, glm, lm, optimize, poisson, reformulate)
 
