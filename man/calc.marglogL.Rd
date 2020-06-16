@@ -58,5 +58,5 @@ Maintainer: \packageMaintainer{rpql}
 \code{\link{rpql}} for fitting and performing model selection in GLMMs using regularized PQL. \code{lme4} also approximately calculates the marginal log-likelihood when fitting a GLMM.}
 
 \examples{
-## Make your own =D
+## Not given
 }

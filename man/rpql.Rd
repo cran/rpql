@@ -21,7 +21,7 @@ rpql(y, ...)
   pen.type = "lasso", start = NULL, cov.groups = NULL, pen.weights = NULL, 
   hybrid.est = FALSE, offset = NULL, intercept = TRUE, save.data = FALSE, 
   control = list(tol = 1e-4, maxit = 100, trace = FALSE, restarts = 5, 
-  scad.a = 3.7, mcp.gamma = 2, seed = NULL), ...)
+  scad.a = 3.7, mcp.gamma = 2, lasso.lambda.scale = TRUE, seed = NULL), ...)
 
 \method{print}{rpql}(x, ...)
   }
@@ -170,11 +170,11 @@ An object of class "rpql" containing the following elements:
    
    \item Fan, J., and Li, R. (2001). Variable selection via nonconcave penalized likelihood and its oracle properties. Journal of the American statistical Association, 96, 1348-1360.
    
-   \item Hui, F.K.C., Mueller, S., and Welsh, A.H. (2017). Joint Selection in Mixed Models using Regularized PQL. Journal of the American Statistical Association, 112, 1323-1333.
+   \item Hui, F. K. C., Mueller, S., and Welsh, A.H. (2017). Joint Selection in Mixed Models using Regularized PQL. Journal of the American Statistical Association, 112, 1323-1333.
    
-   \item Hui, F.K.C., Mueller, S., and Welsh, A.H. (2017). Hierarchical Selection of Fixed and Random Effects in Generalized Linear Mixed Models. Statistica Sinica, 27, 501-518.
+   \item Hui, F. K. C., Mueller, S., and Welsh, A.H. (2017). Hierarchical Selection of Fixed and Random Effects in Generalized Linear Mixed Models. Statistica Sinica, 27, 501-518.
 
-   \item Hui, F. K., Warton, D. I., and Foster, S. D. (2014). Tuning parameter selection for the adaptive lasso using ERIC. Journal of the American Statistical Association, 110, 262-269.   
+   \item Hui, F. K. C., Warton, D. I., and Foster, S. D. (2014). Tuning parameter selection for the adaptive lasso using ERIC. Journal of the American Statistical Association, 110, 262-269.   
 	
    \item Lin, X., and Breslow, N. E. (1996). Bias correction in generalized linear mixed models with multiple components of dispersion. Journal of the American Statistical Association, 91, 1007-1016.
 	
@@ -219,10 +219,11 @@ Maintainer: \packageMaintainer{rpql}
 library(lme4)
 library(gamlss.dist)
 
-##################
+##-------------------------
 ## Example 1: Poisson GLMM on simulated data 
 ## Indepenent cluster model with 30 clusters and equal cluster sizes of 10
 ## 9 fixed and random effect covariates including a fixed and random intercept
+##-------------------------
 library(mvtnorm)
 set.seed(1)
 n <- 30; m <- 10; p <- 8; 
@@ -254,26 +255,29 @@ fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id,
 	family = poisson(), lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
 
 ## Note, if you wanted to penalized the fixed effects only, this can achieved
 ## by setting fit_sat$pen.weights$random$cluster <- rep(0,ncol(simy$Z$cluster))
 
+
 ## An alternative way to construct the X and Z matrices for input into rpqlseq is as follows:
+## Big thanks for Andrew Olney for this suggestion!
 XMM <- unname(model.matrix(fit_satlme4)) 
 ZMM <- getME(fit_satlme4,"mmList"); names(ZMM) <- "cluster"
 lambda_seq <- lseq(1e-6,1,length=100)
 fit <- rpqlseq(y = simy$y, X = XMM, Z = ZMM, id = simy$id, 
  	family = poisson(), lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
-## Big thanks for Andrew Olney for this suggestion!
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 }
 
 
-##################
+##-------------------------
 ## Example 2: Similar to example 1 but with Bernoulli GLMMs 
 ## 30 clusters, cluster size of 20
+##-------------------------
 library(mvtnorm)
 set.seed(1)
 n <- 30; m <- 20; p <- 8; 
@@ -305,7 +309,7 @@ fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id,
 	family = binomial(), lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
 	
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
 
 ## An alternative way to construct the X and Z matrices for input into rpqlseq is as follows:
@@ -315,49 +319,41 @@ lambda_seq <- lseq(1e-6,1,length=100)
 fit <- rpqlseq(y = simy$y, X = XMM, Z = ZMM, id = simy$id, 
  	family = binomial(), lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 }
 
 
-##################
+##-------------------------
 ## Example 3: Bernoulli GLMMs on simulated data
 ## Nested data with 200 observations in total: split into 10 creeks, 
 ## 5 samples nested within each creek
-## Please see example in gendat.glmm for further details
-mn <- 200; 
+##-------------------------
+mn <- 100; 
 X <- matrix(1,mn,1); 
-ids <- list(samples = rep(1:50,each=4), creek = rep(1:10,each=20)) 
+ids <- list(samples = rep(1:50,each=2), creek = rep(1:10,each=10)) 
 ## We have two sets of random intercepts only, one for creek and one for 
 ## samples nested within creek.
 Zs <- list(samples = X, creek = X) 
 
-true_betas <- -0.1 
-true_D <- list(samples = as.matrix(0.001), creek = as.matrix(1)) 
+true_betas <- 0.25
+true_D <- list(samples = as.matrix(1e-5), creek = as.matrix(0.5)) 
 ## Please ensure each element of true_D is a matrix
 
 simy <- gendat.glmm(id = ids, X = X, beta = true_betas, Z = Zs, 
 	D = true_D, trial.size = 1, family = binomial())
 
 \dontrun{
-## Construct a solution path use adaptive LASSO for selection
-## Here is another way of constructing the adaptive weights:
-## Use the fact that rpql can do a final fit based on maximum likelihood
-## to obtain a good saturated fit.
-fit_sat <- rpql(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-	family = binomial(), lambda = 0, hybrid = TRUE)
-fit_sat <- build.start.fit(fit_sat$hybrid, gamma = 2)
-	
 fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-	family = binomial(), lambda = lambda_seq, pen.type = "adl", 
-	pen.weights = fit_sat$pen.weights, start = fit_sat)
+	family = binomial(), lambda = lambda_seq, pen.type = "scad")
 
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
 }
    
 
-##################
+##-------------------------
 ## Example 4: Linear mixed models on Alfalfa split-plot data
-
+##-------------------------
 \dontrun{
 
 library(nlme)
@@ -376,29 +372,22 @@ fit_satlme4 <- lmer(Yield ~ X - 1 + (1|Block/Variety), data = Alfalfa)
 fit_sat <- build.start.fit(fit_satlme4, cov.groups = c(1,2,2,2), gamma = 2)
 
 ## Construct a solution path using adaptive LASSO for selection
-lambda_seq <- lseq(1e-5,2,length=100)
+lambda_seq <- lseq(1e-8,2,length=100)
 fit <- rpqlseq(y = Alfalfa$Yield, X = X, Z = Z, id = ids, 
 	lambda = lambda_seq, cov.groups = c(1,2,2,2), pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
-
-
-## An alternative way to construct the X and Z matrices for input into rpqlseq is as follows:
-X <- unname(model.matrix(fit_satlme4)) 
-Z <- getME(fit_satlme4, "mmList"); names(Z) <- c("BlockVariety", "Block")
-lambda_seq <- lseq(1e-6,1,length=100)
-fit <- rpqlseq(y = Alfalfa$Yield, X = X, Z = Z, id = ids, 
-	lambda = lambda_seq, cov.groups = c(1,2,2,2), pen.type = "adl", 
-	pen.weights = fit_sat$pen.weights, start = fit_sat)
 }
 
 
-##################
+##-------------------------
 ## Example 5: Linear mixed models on sleep study dataset
+##-------------------------
 
 \dontrun{
+
 data(sleepstudy)
 
 ## How you fit it in lme4
@@ -409,36 +398,30 @@ fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
 
 ## How you fit it using rpql
 ## Construct a solution path using adaptive LASSO for selection 
-X <- cbind(1,sleepstudy$Days)
+X <- cbind(1, sleepstudy$Days)
 Z <- list(subject = X)
 ids <- list(subject = as.numeric(sleepstudy$Subject))
 fit_sat <- build.start.fit(fm1, gamma = 2)
 
-lambda_seq <- lseq(1e-4,1,length=100)
+lambda_seq <- lseq(1e-8,1e-1,length=100)
 fit <- rpqlseq(y = sleepstudy$Reaction, X = X, Z = Z, id = ids, 
 	lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
 ## Best fit might well be the saturated fit! 
 ## This is at least consistent with confint(fm1)
-
-## An alternative way to construct the X and Z matrices for input into rpqlseq is as follows:
-X <- unname(model.matrix(fm1)) 
-Z <- getME(fm1, "mmList"); names(Z) <- "subject"
-lambda_seq <- lseq(1e-6,1,length=100)
-fit <- rpqlseq(y = sleepstudy$Reaction, X = X, Z = Z, id = ids, 
-	lambda = lambda_seq, pen.type = "adl", 
-	pen.weights = fit_sat$pen.weights, start = fit_sat)
 }
 
 
-##################
+##-------------------------
 ## Example 6: GLMM with lognormal responses
 ## Fixed effects selection only
+##-------------------------
 
 \dontrun{
+
 n <- 50; m <- 10; p <- 8; 
 H <- abs(outer(1:p, 1:p, "-")) 
 X <- cbind(1,rmvnorm(n*m,rep(0,p),sigma=0.5^H)); 
@@ -451,7 +434,7 @@ simy <- gendat.glmm(id = list(cluster=rep(1:n,each=m)), X = X,
 	beta = true_betas, Z = list(cluster=Z), D = list(cluster=true_D), 
 	family = LOGNO(), phi = 1) 
 
-## We will use the lasso penalty for fixed effects only with no weights
+## We will use the SCAD penalty for fixed effects only with no weights
 ## Note lognormal mixed models are usually hard to fit by maximum likelihood in R!
 ## Hence adaptive weights are sightly hard to obtain
 
@@ -462,8 +445,9 @@ simy <- gendat.glmm(id = list(cluster=rep(1:n,each=m)), X = X,
 ## To account for this in the above, we can use the pen.weights argument 
 ## to prevent penalization of the first three fixed effect covariates
 
+lambda_seq <- lseq(1e-5,1,length=100)
 fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-  family = LOGNO(), lambda = lambda_seq, pen.type = "lasso", start = NULL, 
+  family = LOGNO(), lambda = lambda_seq, pen.type = "scad", 
 	pen.weights = list(fixed = rep(c(0,1), c(3,ncol(X)-3))))
 
 summary(fit$best.fit[[3]])  

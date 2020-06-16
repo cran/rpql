@@ -78,10 +78,12 @@ Maintainer: \packageMaintainer{rpql}
 
 \examples{
 
-##################
+##-------------------------
 ## Example 1: Linear Mixed Models 
 ## Independent cluster model with 50 clusters
 ## Nine covariates including a fixed and random intercept
+## Please note the rpql is currently not optimized for LMMs!
+##-------------------------
 library(mvtnorm)
 library(lme4)
 
@@ -103,9 +105,9 @@ simy <- gendat.glmm(id = list(cluster = rep(1:n,each=m)), X = X, beta = true_bet
 ## the name of the first element (a generic name "cluster") is the 
 ## same for all three lists. 
 ## id is where the action takes place. In particular, id$cluster is 
-## designed so that the first 12 elements correspond to cluster 1, 
-## the second 12 elements correspond to cluster 2, and so forth. 
-## In turn, the first 12 rows of X and Z$cluster correspond 
+## designed so that the first m elements correspond to cluster 1, 
+## the second m elements correspond to cluster 2, and so forth. 
+## In turn, the first m rows of X and Z$cluster correspond 
 ## to cluster 1, and so on. 
 
 \dontrun{
@@ -120,46 +122,9 @@ fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id,
 	family = gaussian(), lambda = lambda_seq, pen.type = "adl", 
 	pen.weights = fit_sat$pen.weights, start = fit_sat)
 
-summary(fit$best.fit[[3]])  
+summary(fit$best.fit[[5]])  ## Second of the hybrid ICs
 # apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
 }
 
-
-##################
-## Example 2: Bernoulli GLMMs on simulated data
-## Nested data with 200 observations in total: split into 10 creeks, 
-## 5 samples nested within each creek
-
-mn <- 200; 
-X <- as.matrix(rep(1,mn)); 
-ids <- list(samples = rep(1:50,each=4), creek = rep(1:10,each=20)) 
-## We have two sets of random intercepts only, one for creek and one 
-## 	for samples nested within creek.
-Zs <- list(samples = X, creek = X) 
-
-true_betas <- -0.1 
-## Please ensure each element of true_D is a matrix
-true_D <- list(samples = as.matrix(0.001), creek = as.matrix(1)) 
-
-simy <- gendat.glmm(id = ids, X = X, beta = true_betas, Z = Zs, D = true_D, 
-	trial.size = 1, family = binomial())
-
-\dontrun{
-
-## Construct a solution path use adaptive LASSO for selection
-## Here is another way of constructing the adaptive weights:
-## Use the fact that rpql can do a final fit based on maximum likelihood
-## to obtain a good saturated fit.
-fit_sat <- rpql(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-	family = binomial(), lambda = 0, hybrid = TRUE)
-fit_sat <- build.start.fit(fit_sat$hybrid, gamma = 2)
-	
-lambda_seq <- lseq(1e-6,1,length=100)
-fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-	family = binomial(), lambda = lambda_seq, pen.type = "adl", 
-	pen.weights = fit_sat$pen.weights, start = fit_sat)
-
-summary(fit$best.fit[[3]])  
-# apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
-}
+## Please see other examples in help file for the \code{rpql} function.
 }

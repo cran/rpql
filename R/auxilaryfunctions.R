@@ -2,34 +2,40 @@
 ## Auxilary functions
 ##################
 build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
-	if(!(class(lme4.fit)[1] %in% c("glmerMod","lmerMod"))) stop("lme4.fit must be fit from the lme4 package. Thanks")
+	if(!(class(lme4.fit)[1] %in% c("glmerMod","lmerMod"))) 
+          stop("lme4.fit must be fit from the lme4 package. Thanks")
 
 	out <- list(fixef = fixef(lme4.fit)+1e-4)
-	get.ranefs <- as.list(ranef(lme4.fit))
-	for(k in 1:length(get.ranefs)) { get.ranefs[[k]] <- as.matrix(get.ranefs[[k]]) }
-	if(!is.null(id)) names(get.ranefs) <- names(id)
-	out$ranef <- get.ranefs
+	get_ranefs <- as.list(ranef(lme4.fit))
+	for(k in 1:length(get_ranefs)) 
+          get_ranefs[[k]] <- as.matrix(get_ranefs[[k]])
+	if(!is.null(id)) 
+          names(get_ranefs) <- names(id)
+	out$ranef <- get_ranefs
 	out$cov.groups <- cov.groups
 	
-	get.varcors <- vector("list", length(get.ranefs)); names(get.varcors) <- names(get.ranefs)
-	for(k in 1:length(get.ranefs)) 
-		get.varcors[[k]] <- VarCorr(lme4.fit)[[k]]+1e-4
-	out$ran.cov <- get.varcors
+	get_varcors <- vector("list", length(get_ranefs))
+     names(get_varcors) <- names(get_ranefs)
+	for(k in 1:length(get_ranefs)) 
+		get_varcors[[k]] <- VarCorr(lme4.fit)[[k]]+1e-4
+	out$ran.cov <- get_varcors
 
 	
 	if(length(gamma) == 1) 
 		gamma <- rep(gamma,2)
 	#cat("Building adaptive lasso weights...\n")
-	if(is.null(cov.groups)) out$pen.weights <- list(fixed = 1/abs(out$fixef)^gamma[1])
+	if(is.null(cov.groups)) 
+          out$pen.weights <- list(fixed = 1/abs(out$fixef)^gamma[1])
 	if(!is.null(cov.groups)) {
-		make.adl.weights <- (1/unlist(lapply(split(out$fixef,cov.groups), l2.norm)))[cov.groups] ## Split by cov.groups, calc L2 norm for each, convert to vector, then expand back...awesome!
-		names(make.adl.weights) <- names(out$fixef)
-		out$pen.weights <- list(fixed = make.adl.weights^gamma[1]) 
+		make_adlweights <- (1/unlist(lapply(split(out$fixef,cov.groups), l2.norm)))[cov.groups] ## Split by cov.groups, calc L2 norm for each, convert to vector, then expand back...awesome!
+		names(make_adlweights) <- names(out$fixef)
+		out$pen.weights <- list(fixed = make_adlweights^gamma[1]) 
 		}
 
-	out$pen.weights$random <- vector("list", length(get.ranefs))
-	names(out$pen.weights$random) <- names(get.ranefs)
-	for(k in 1:length(get.ranefs)) { out$pen.weights$random[[k]] <- 1/diag(out$ran.cov[[k]]^gamma[2]) }
+	out$pen.weights$random <- vector("list", length(get_ranefs))
+	names(out$pen.weights$random) <- names(get_ranefs)
+	for(k in 1:length(get_ranefs)) 
+          out$pen.weights$random[[k]] <- 1/diag(out$ran.cov[[k]]^gamma[2])
 	
 	return(out)
 	}
@@ -65,11 +71,11 @@ calc.marglogL <- function(new.data, fit, B = 1000) {
 		}
 
 
-	eta <- new.data$X%*%fit$fixef + fit$offset
-	for(t in 1:B) {
+	eta <- new.data$X %*% fit$fixef + fit$offset
+	for(k0 in 1:B) {
 		eta2 <- eta
 		for(k in 1:length(fit$ran.cov)) 
-               eta2 <- eta2 + new.data$Z[[k]]%*%genb[[k]][t,]
+               eta2 <- eta2 + new.data$Z[[k]] %*% genb[[k]][k0,]
 		
 		if(family$family[1] == "gaussian") 
                tmp_loglik <- dnorm(new.data$y, mean = eta2, sd=sqrt(fit$phi), log = TRUE)
@@ -87,39 +93,20 @@ calc.marglogL <- function(new.data, fit, B = 1000) {
                tmp_loglik <- (dZIP(new.data$y, mu=family$mu.linkinv(eta2), sigma=fit$zeroprob, log=TRUE))
 
 		tmp_loglik[!is.finite(tmp_loglik)] <- NA
-		loglik[t] <- exp(sum(tmp_loglik,na.rm=TRUE))
+		loglik[k0] <- exp(sum(tmp_loglik,na.rm=TRUE))
 		} 
 	
 	return(mean(loglik[is.finite(loglik)]))
 	}
 
 
-fillin.control <- function(control) {
-	if(!("tol" %in% names(control))) 
-          control$tol <- 1e-4
-	if(!("maxit" %in% names(control))) 
-          control$maxit <- 100
-	if(!("trace" %in% names(control))) 
-          control$trace <- FALSE
-	if(!("restarts" %in% names(control))) 
-          control$restarts <- 5
-	if(!("scad.a" %in% names(control))) 
-          control$scad.a <- 3.7
-	if(!("mcp.gamma" %in% names(control))) 
-          control$mcp.gamma <- 2
-	if(!("seed" %in% names(control))) 
-          control$seed <- NULL 
-     
-     return(control)
-     }
-	
-	
 	
 ## Dataset generation for GLMM
 ## Intercept must be manually included in X and Z if desired
 #id = list(cluster = rep(1:n,each=m), cluster2 = id2); beta = truebeta; D = list(cluster = true.D, cluster2 = true.D2); trial.size = 1; family = "binomial"; phi = NULL; upper.count = Inf
 gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), phi = NULL, shape = NULL, zeroprob = NULL, upper.count = Inf) {
-	X <- as.matrix(X); n <- nrow(X)
+	X <- as.matrix(X)
+	n <- nrow(X)
 	if(ncol(X) != length(beta)) 
 		stop("The number of columns in X should be equal to the length of beta. Thanks")
 	
@@ -136,11 +123,11 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 		stop("The dimension of each element in the list D should be equal to the number of columns in the corresponding element of list Z. Thanks.")
 
 		
-	get.lengths.id <- sapply(id,length)
-	if(any(get.lengths.id!=nrow(X))) 
+	get_lengths_id <- sapply(id,length)
+	if(any(get_lengths_id!=nrow(X))) 
 		stop("The length of each element in the list id should be equal to the number of rows in X and Z. Thanks.")
-	rm(get.lengths.id,get_dimD, get_ncolZ)
-
+	rm(get_lengths_id, get_dimD, get_ncolZ)
+ 
 	
 	if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","LOGNO","ZIP"))) 
 		stop("Current version does not permit specified family. Sorry!")
@@ -168,7 +155,8 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
           D[[k]] <- as.matrix(D[[k]])
           Z[[k]] <- as.matrix(Z[[k]]) 
           }
-	for(k in 1:length(id)) { 
+	for(k in 1:length(id)) 
+         { 
           id[[k]] <- as.integer(id[[k]]) 
           }
 
@@ -184,8 +172,9 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 		
 	## Generate response	
 	sim_y <- numeric(n)
-	eta <- X%*%beta 
-	for(k in 1:length(trueb)) { eta <- eta + rowSums(Z[[k]]*trueb[[k]][id[[k]],]) }
+	eta <- X %*% beta 
+	for(k in 1:length(trueb)) 
+          eta <- eta + rowSums(Z[[k]]*trueb[[k]][id[[k]],])
 
 	if(family$family[1] == "gaussian") 
           sim_y <- rnorm(n, mean = eta, sd=sqrt(phi))
@@ -203,16 +192,16 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
                     testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
 			if(family$family[1] == "negative.binomial") 
                     testsim_y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
-			try.counter <- 0
+			try_counter <- 0
 			
-			while(testsim_y > upper.count & try.counter < 5000) {
+			while(testsim_y > upper.count & try_counter < 5000) {
 				if(family$family[1] == "ZIP") 
                          testsim_y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
 				if(family$family[1] == "poisson") 
                          testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
 				if(family$family[1] == "negative.binomial") 
                          testsim_y <- rnbinom(1, mu=family$linkinv(eta[i]), size=1/phi)
-				try.counter <- try.counter + 1
+				try_counter <- try_counter + 1
 				}
 			sim_y[i] <- testsim_y
 			}		
@@ -227,7 +216,8 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 
 	
 	
-l2.norm <- function(x) { sqrt(sum(x^2)) }	
+l2.norm <- function(x) 
+     sqrt(sum(x^2)) 
 
 
 lseq <- function (from, to, length, decreasing = FALSE) {
@@ -271,89 +261,5 @@ scad.deriv <- function(x, lambda, a = 3.7) {
 	}
 
 
-	
-##############
-## Hidden functions
-
-## Used only within rpql function
-build.start.fit.rpql <- function(fit, id, num.ran, gamma = 0, cov.groups = NULL) {
-	length.uniids <- numeric(length(id))
-	for(k in 1:length(id)) { 
-		length.uniids[k] <- length(unique(id[[k]])) 
-		}
-# 	print(class(fit))
-		
-	if(class(fit)[1] %in% c("glmerMod","lmerMod")) 
-		get.fit <- build.start.fit(lme4.fit = fit, gamma = gamma, cov.groups = cov.groups)
-	if(class(fit)[1] %in% c("glm","lm")) {
-		get.fit <- list(fixef = fit$coefficients, ranef = vector("list",length(id)), ran.cov = vector("list",length(id)))
-		for(k in 1:length(get.fit$ranef)) { 
-			get.fit$ranef[[k]] <- matrix(0.01,length.uniids[k],num.ran[k]) 
-			get.fit$ran.cov[[k]] <- diag(x = 1, nrow = num.ran[k]) 
-			}
-		names(get.fit$ranef) <- names(get.fit$ran.cov) <- names(id)	
-		}
-		
-		
-	return(get.fit)
-	}
-
-
-## Generate starting values for the fixed effects by fitting a lme4 object with a small number of iterations
-## For binomial and gaussian data, starting using a straight glm and setting ranef = list(cluster = matrix(0.01,n,9), ran.cov = list(cluster = diag(x = 0.5, nrow = 9))) works
-start.fixed <- function(y, X, Z, id, family = gaussian(), offset = NULL, trial.size = 1) {
-	make.dat <- data.frame(y, do.call(cbind,Z), X, do.call(cbind,id))
-	restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
-	for(k in 1:length(id)) { 
-		restring1 <- paste(restring1, "+ (",paste0(colnames(Z[[k]]),collapse="+"),"-1|",names(id)[k],")")
-		}
-	
-	if(family$family[1] == "gaussian") {
-		restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
-		restring2 <- reformulate(restring1, response = "y")		
-		final.fit <- suppressWarnings(lm(restring2, offset = offset, data = make.dat))
-		}
-		
-	if(family$family[1] == "binomial") {
-		restring1 <- paste(paste(colnames(X),collapse="+"),"-1")
-		restring2 <- as.formula(paste("cbind(y,trial.size-y) ~", restring1))
- 		final.fit <- suppressWarnings(glm(restring2, family = family, offset = offset, data = make.dat))
-# 		final.fit <- suppressWarnings(glmer(restring2, family = family, offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
-		}
-	
-	if(family$family[1] %in% c("ZIP","poisson")) {
-		restring2 <- reformulate(restring1, response = "y")		
-		final.fit <- suppressWarnings(glmer(restring2, family = poisson(), offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
-		}
-		
-	if(family$family[1] %in% c("Gamma")) {
-		restring2 <- reformulate(restring1, response = "y")		
-		final.fit <- suppressWarnings(glmer(restring2, family = Gamma(), offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
-		}
-
-	if(family$family[1] %in% c("LOGNO")) {
-		restring2 <- as.formula(paste("log(y) ~", restring1))
-		final.fit <- suppressWarnings(lmer(restring2, REML = FALSE, offset = offset, data = make.dat, control = lmerControl(optCtrl=list(maxfun=10))))
-		}
-	
-	if(family$family[1] %in% c("negative.binomial")) {
-		restring2 <- reformulate(restring1, response = "y")		
-		final.fit <- suppressWarnings(glmer.nb(restring2, offset = offset, data = make.dat, control = glmerControl(optCtrl=list(maxfun=10))))
-		}
-
-	return(final.fit)
-	}
-
-
-
-# ## Evaluate values of penalty functions
-# pen.val <- function(beta,lambda,pen.type) {
-# 	if(pen.type == "lasso") out <- sum(lambda*abs(beta))
-# 	if(pen.type == "scad") { 
-# 		a <- 3.7
-# 		out <- sum(lambda*abs(beta)*(abs(beta)<lambda) - (beta^2 - 2*3.7*lambda*abs(beta) + lambda^2)/(2*(a-1))*(lambda < abs(beta) & abs(beta) < a*lambda) + lambda^2*(a+1)/2*(abs(beta) > lambda)) }
-# 
-# 	return(out)
-# 	}
 	
 	

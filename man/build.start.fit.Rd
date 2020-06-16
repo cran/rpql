@@ -75,10 +75,11 @@ Maintainer: \packageMaintainer{rpql}
 
 \examples{
 
-##################
+##-------------------------
 ## Example 1: Bernoulli GLMM with grouped covariates. 
 ## Independent cluster model with 50 clusters and equal cluster sizes of 10
 ## Nine covariates where the last covariate (soil type) is a factor with four levels
+##-------------------------
 n <- 50; p <- 8; m <- 10
 set.seed(123)
 X <- data.frame(matrix(rnorm(n*m*p),n*m,p), soil=sample(1:4,size=m*n,replace=TRUE))

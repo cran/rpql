@@ -54,5 +54,5 @@ Maintainer: \packageMaintainer{rpql}
 \seealso{\code{\link{rpql}} for fitting and performing model selection in GLMMs using regularized PQL.}
 
 \examples{
-## Please see examples in help file for the rpql function
+## Please see other examples in help file for the \code{rpql} function.
 }

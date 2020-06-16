@@ -15,7 +15,7 @@ rpqlseq(y, X, Z, id, family = gaussian(), trial.size = 1, lambda,
   pen.type = "lasso", start = NULL, cov.groups = NULL, pen.weights = NULL, 
   offset = NULL, intercept = TRUE, save.data = FALSE, 
   control = list(tol = 1e-4, maxit = 100, trace = FALSE, restarts = 5, 
-  scad.a = 3.7, mcp.gamma = 2, seed = NULL), ...)
+  scad.a = 3.7, mcp.gamma = 2, lasso.lambda.scale = TRUE, seed = NULL), ...)
 
   }
 
