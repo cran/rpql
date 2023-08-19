@@ -15,8 +15,8 @@
 \tabular{ll}{
 Package: \tab rpql\cr
 Type: \tab Package\cr
-Version: \tab 0.4\cr
-Date: \tab 2015-06-01\cr
+Version: \tab 0.8.1\cr
+Date: \tab 2023-08-01\cr
 License: \tab GPL-2\cr
 }
 }

@@ -3,28 +3,33 @@ citHeader("To cite the 'rpql' package in publications use:")
 year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date, perl = TRUE)
 vers <- paste("R package version", meta$Version)
 
-citEntry(entry="Manual",
+bibentry(bibtype="Manual",
          title = "rpql: Regularized PQL for Joint Selection in GLMMs",
-         author = personList(as.person("Francis K. C. Hui")),
-         year = year,
+         author = c(person(given = "Francis K. C.", family = "Hui")),
+         year = year, 
          note = vers,
-
          textVersion =
          paste("Francis K. C. Hui (",
                year,
                "). rpql: Regularized PQL for Joint Selection in GLMMs.",
-               vers, ".", sep=""))
+               vers, ".", sep=""),
+       encoding = "UTF-8"
+)
 
-citEntry(entry="Article",
+
+bibentry(bibtype="Article",
          title = "Joint Selection in Mixed Models using Regularized PQL",
-         author = personList(as.person("F. K. C. Hui"), as.person("S. Mueller"), as.person("A. H. Welsh")),
+         author = c(person(given = "Francis K. C.", family = "Hui"), 
+                    person(given = "Samuel", family = "Mueller"), 
+                    person(given = "A. H.", family = "Welsh")),
     	 journal = "Journal of the American Statistical Association",
          year     = "2017",
          volume      = "112",
           pages   = "1323--1333",
 
          textVersion =
-         paste("F.K.C., Mueller, S., and Welsh, A.H. (2017)",
+         paste("Hui, F.K.C., Mueller, S., and Welsh, A.H. (2017)",
   	       "Joint Selection in Mixed Models using Regularized PQL",
-               "Journal of the American Statistical Association, 112, 1323-1333.")
+               "Journal of the American Statistical Association, 112, 1323-1333."),
+      encoding = "UTF-8"
 )

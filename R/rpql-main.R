@@ -2,11 +2,8 @@
 ## Regularized PQL (with a penalty on fixed effects and a group penalty on the random effects
 ############
 
-## Version 0.8
-## - Fixed issue with trial.size > 1 seems to run into issues
-## - Fixed issue with constructing bigZ when rownames of X are "random"
-## - A new control argument lasso.lambda.scale is used, which scales the penalty on the group random effects (by 1/sqrt(# of clusters) so that is on the same scale as the fixed effects penalty; Thanks to Sarbesh Pandeya for pointing this out! 
-
+## Version 0.8.1
+## - Fixed a minor bug on lasso.lambda.scale
 
 ## TODO: 1) consider using threshold operators, including LLA and threshold; 
 ## 2) Very slow for Gaussian responses!
@@ -38,16 +35,16 @@ rpqlseq <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambda, pe
      control = list(tol = 1e-4, maxit = 100, trace = FALSE, restarts = 5, scad.a = 3.7, mcp.gamma = 2, lasso.lambda.scale = TRUE, seed = NULL), ...) {
 	
 	lambda <- as.matrix(lambda)
-	if(!control$lasso.lambda.scale)
-          warnings("Scaling factor for the second tuning parameter has been turned off for lasso and adaptive lassp penalties. 
-               This may cause issues as the group coefficient penalty on the random effects is on a different scale to the single 
-               coefficient penalty on the fixed effects.")
 	if(ncol(lambda) == 1) {
           lambda[,1] <- sort(lambda[,1], decreasing = FALSE)
           }
           
 	
 	control <- fillin.control(control) 
+	if(!control$lasso.lambda.scale)
+          warnings("Scaling factor for the second tuning parameter has been turned off for lasso and adaptive lassp penalties. 
+               This may cause issues as the group coefficient penalty on the random effects is on a different scale to the single 
+               coefficient penalty on the fixed effects.")
 	
 	## Do a starting fit for formatting reasons
 	start_fit <- rpql(y = y, X = X, Z = Z, id = id, family = family, lambda = lambda[1,], pen.type = "lasso", start = start) 
