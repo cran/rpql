@@ -26,9 +26,6 @@ An object of class "family"
 Maintainer: \packageMaintainer{rpql}
 }
 
-\seealso{
-\code{\link{negative.binomial}} in the \code{MASS} package for another example of a negative.binomial family. 
-}
 
 \examples{
 \dontrun{

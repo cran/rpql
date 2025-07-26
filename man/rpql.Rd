@@ -60,7 +60,7 @@ rpql(y, ...)
   \item{save.data}{Should \code{y, X}, and \code{Z}, be saved as part of the output? Defaults to FALSE. The data is not saved by default in order to save memory.}
 
   \item{control}{A list controlling the finer details of the rPQL algorithm. These include: 
-	\itemize{
+	\describe{
 		\item{\code{tol}: }{Tolerance value for convergence in the regularized PQL to be declared, where convergence is measured as the difference between the estimated parameters in successive iterations. Defaults to a value of 1e-4.}
 		
 		\item{\code{maxit}: }{The maximum number of update iterations for regularized PQL. Defaults to 100.}

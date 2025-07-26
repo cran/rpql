@@ -1,15 +1,19 @@
 Package: rpql
 Title: Regularized PQL for Joint Selection in GLMMs
-Version: 0.8.1
-Date: 2023-08-01
-Author: Francis K.C. Hui <francis.hui@gmail.com>, with contributions from Samuel Mueller <samuel.mueller@sydney.edu.au> and A.H. Welsh <Alan.Welsh@anu.edu.au>
-Maintainer: Francis Hui <fhui28@gmail.com>
+Version: 0.8.2
+Date: 2025-08-01
+Authors@R: c(person(given = "Francis K.C.",
+                    family = "Hui", 
+                    role = c("aut", "cre"), 
+                    email = "fhui28@gmail.com"))
+Maintainer: Francis K.C. Hui <fhui28@gmail.com>
 Description: Performs joint selection in Generalized Linear Mixed Models (GLMMs) using penalized likelihood methods. Specifically, the Penalized Quasi-Likelihood (PQL) is used as a loss function, and penalties are then augmented to perform simultaneous fixed and random effects selection. Regularized PQL avoids the need for integration (or approximations such as the Laplace's method) during the estimation process, and so the full solution path for model selection can be constructed relatively quickly. 
 License: GPL-2
 Imports: gamlss.dist, lme4, Matrix, MASS, mvtnorm, Rcpp,
 Suggests: nlme
 NeedsCompilation: yes
 LinkingTo: Rcpp, RcppArmadillo
-Packaged: 2023-08-19 22:32:35 UTC; fkch
+Packaged: 2025-07-26 05:52:36 UTC; fkch
+Author: Francis K.C. Hui [aut, cre]
 Repository: CRAN
-Date/Publication: 2023-08-19 22:50:02 UTC
+Date/Publication: 2025-07-26 06:10:01 UTC

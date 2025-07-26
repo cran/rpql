@@ -1,6 +1,17 @@
 #################
 ## Auxilary functions
 ##################
+print.rqpl.startupInfo <- function() { 
+     version <- utils::packageVersion("rpql")
+     startup_note <- paste0("This is rpql version ", version, ". \nPlease note that as of version 0.8, rpql will no longer be regularly updated. However, if you spot any bugs/typos or have a specific feature requests, please contact the maintainer.")
+     packageStartupMessage(startup_note)
+     }
+
+.onAttach <- function(...) {
+    print.rqpl.startupInfo()
+    }
+
+
 build.start.fit <- function(lme4.fit, id = NULL, gamma = 0, cov.groups = NULL) {
 	if(!(class(lme4.fit)[1] %in% c("glmerMod","lmerMod"))) 
           stop("lme4.fit must be fit from the lme4 package. Thanks")
