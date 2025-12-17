@@ -1,11 +1,11 @@
-88abcd5499c6bf13d7b007eb1e3cc846 *DESCRIPTION
+f360ab69b33d36cfdb1695f149566738 *DESCRIPTION
 22a508e44faef8c1711352c975140bb6 *NAMESPACE
 0b775898df5fbfe341bc7c2b4584fd16 *R/RcppExports.R
 7301cc4084b7e7364c8b7a0dc7b3f978 *R/auxilaryfunctions.R
 ba6527a97ecf03dfcf6ea996a98caa2e *R/hiddenfunctions.R
 6286195def5352c6e062622b2d156c2e *R/rpql-main.R
 d4d818a801ca9fce324bd0f36fbf7fb8 *R/summaryfunctions.R
-f5892b3a612919024067cc5266eed5a7 *build/partial.rdb
+8fb5af57af4a1662ca108319a604e367 *build/partial.rdb
 3de4a780426974bdfa84a1b4d5019157 *inst/CITATION
 dc78202692c3ee056cd4fc2e7da4fd9c *man/build.start.fit.Rd
 18196f0987831e49261fb873ee64204b *man/calc.marglogL.Rd
@@ -16,7 +16,7 @@ dc78202692c3ee056cd4fc2e7da4fd9c *man/build.start.fit.Rd
 017214b77fda0871daed920a1a9410a2 *man/rpql.Rd
 3c32a45588921157b80aa75c51f6127e *man/rpqlseq.Rd
 0e346c1876e30018d3a631b695e7f4c5 *man/summary.rpql.Rd
-2341fcc01a0e0145ac18ea4135cd53db *src/Makevars
-2341fcc01a0e0145ac18ea4135cd53db *src/Makevars.win
+bbe14c7679fcbb26747f3906d78c2171 *src/Makevars
+bbe14c7679fcbb26747f3906d78c2171 *src/Makevars.win
 0b68acc55e82842917c779083d683e87 *src/RcppExports.cpp
 6d1b4e03314badec8e2c84fdb7584c61 *src/newcoeffn.cpp
