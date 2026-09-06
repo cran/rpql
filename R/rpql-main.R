@@ -2,6 +2,9 @@
 ## Regularized PQL (with a penalty on fixed effects and a group penalty on the random effects
 ############
 
+## Version 0.8.4
+## - Removed dependency on gamlss.dist by creating own functions for ZIP and scrapping LOGNO as a family.
+
 ## Version 0.8.1
 ## - Fixed a minor bug on lasso.lambda.scale
 
@@ -143,8 +146,10 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
           get_lengths_id[k] <- length(id[[k]])
           length_uniids[k] <- length(unique(id[[k]])) 
           }
-     if((get_nrows_Z != get_lengths_id) || (get_nrows_Z != nrow(X)) || (nrow(X) != get_lengths_id)) 
+     for(k in 1:length(id)) { 
+         if((get_nrows_Z[k] != get_lengths_id[k]) || (get_nrows_Z[k] != nrow(X)) || (nrow(X) != get_lengths_id[k])) 
           stop("The number of rows in X, the length of each element in list id, and the number of rows in each element in list Z should all be the same. Thanks.")
+        }
      rm(get_lengths_id, get_nrows_Z)
 
 	
@@ -186,7 +191,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
      # 		}
           
           
-     if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","LOGNO","ZIP"))) 
+     if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","ZIP"))) #"LOGNO"
           stop("Current version does not permit specified family. Sorry!")
      if(family$family[1] == "binomial" & !(length(trial.size) %in% c(1,nrow(X)))) 
           stop("Binomial family requires trial.size to either be a single non-zero value or a vector of non-zero values with length equal to the number of rows in X.")
@@ -248,7 +253,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
           return(bigZ)
           }
 
-     if(family$family[1] %in% c("LOGNO","gaussian")) 
+     if(family$family[1] %in% c("gaussian")) #"LOGNO"
           XtWX <- crossprod(X) ## Define these outside as they do not change with iteration
      all_bigZ <- vector("list", length(id))
      for(k in 1:length(id)) 
@@ -261,8 +266,8 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
           all_Zb <- all_Zb + as.numeric(all_bigZ[[k2]] %*% c(t(b[[k2]])))
      if(family$family[1] == "gaussian") 
           new_phi <- phi <- mean((y - X %*% beta - all_Zb - offset)^2) 
-     if(family$family[1] == "LOGNO") 
-          new_phi <- phi <- mean((log(y) - X %*% beta - all_Zb - offset)^2) 
+     #if(family$family[1] == "LOGNO")
+     #     new_phi <- phi <- mean((log(y) - X %*% beta - all_Zb - offset)^2)
      if(family$family[1] == "negative.binomial") 
           new_phi <- phi <- 0.01 
      if(family$family[1] == "Gamma") 
@@ -271,7 +276,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
           new_zeroprob <- zeroprob <- 0.1
      rm(all_Zb)
 
-     if(family$family[1] %in% c("LOGNO","gaussian")) 
+     if(family$family[1] %in% c("gaussian")) #"LOGNO"
           XtWX <- crossprod(X) ## Define these outside as they do not change with iteration
      all_bigZ <- vector("list", length(id))
      for(k in 1:length(id)) 
@@ -288,7 +293,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                all_Zb <- all_Zb + as.numeric(all_bigZ[[k2]] %*% c(t(b[[k2]])))
 
             
-          if(!(family$family[1] %in% c("gaussian","LOGNO"))) {
+          if(!(family$family[1] %in% c("gaussian"))) { #"LOGNO"
                new_etas <- X %*% beta + all_Zb + offset
                new_etas[new_etas > 30] <- 30
                new_etas[new_etas < -30] <- -30
@@ -299,7 +304,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                     new_weights <- (family$mu.eta(new_etas))^2/(family$variance(family$linkinv(new_etas))/shape) 
                if(family$family[1] == "ZIP") {
                     new_weights <- (poisson()$mu.eta(new_etas))^2/(poisson()$variance(poisson()$linkinv(new_etas))) 
-                    weightmulti <- (1-zeroprob)*dpois(y,lambda=family$mu.linkinv(new_etas))/dZIP(x=y,mu=family$mu.linkinv(new_etas),sigma=zeroprob)
+                    weightmulti <- (1-zeroprob)*dpois(y,lambda=family$mu.linkinv(new_etas)) / .dzipois_simple(y,lambda=family$mu.linkinv(new_etas),pstr0=zeroprob)
                     weightmulti[!is.finite(weightmulti)] <- 0
                     new_weights <- new_weights*weightmulti
                     rm(weightmulti)
@@ -335,9 +340,9 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
         
           if(family$family[1] == "gaussian") 
                new_beta <- chol2inv(chol(XtWX + phi*penmat)) %*% crossprod(X, y-all_Zb-offset)
-          if(family$family[1] == "LOGNO") 
-                new_beta <- chol2inv(chol(XtWX + phi*penmat)) %*% crossprod(X, log(y)-all_Zb-offset)
-          if(!(family$family[1] %in% c("gaussian","LOGNO"))) {
+          #if(family$family[1] == "LOGNO")
+          #      new_beta <- chol2inv(chol(XtWX + phi*penmat)) %*% crossprod(X, log(y)-all_Zb-offset)
+          if(!(family$family[1] %in% c("gaussian"))) { #"LOGNO"
                new_beta <- newcoeffn(X*sqrt(new_weights), penmat, (new_workresp-all_Zb-offset)*sqrt(new_weights))			
             #new_beta <- try(chol2inv(chol(XtWX + penmat)) %*% XtWZ, silent=TRUE) ## REMOVE SINCE USING C++
 #  			if(inherits(new_beta,"try-error")) 
@@ -390,11 +395,11 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                     #new_bvec <- chol2inv(chol(crossprod(bigZ) + kronecker(diag(x=length_uniids[k]),phi*penmat2))) %*% crossprod(bigZ, c(y - X%*%new_beta - all_Zb - offset)) 
                     new_bvec <- newcoeffn(bigZ, kronecker(diag(x=length_uniids[k]),phi*penmat2), c(y - X %*% new_beta - all_Zb - offset))
                     }
-               if(family$family[1] == "LOGNO") {
-                    #new_bvec <- chol2inv(chol(crossprod(bigZ) + kronecker(diag(x=length_uniids[k]),phi*penmat2))) %*% crossprod(bigZ, c(log(y) - X%*%new_beta -all_Zb-offset))
-                    new_bvec <- newcoeffn(bigZ, kronecker(diag(x=length_uniids[k]),phi*penmat2), c(log(y) - X %*% new_beta - all_Zb - offset))
-                    }
-               if(!(family$family[1] %in% c("gaussian","LOGNO"))) 
+               #if(family$family[1] == "LOGNO") {
+               #     #new_bvec <- chol2inv(chol(crossprod(bigZ) + kronecker(diag(x=length_uniids[k]),phi*penmat2))) %*% crossprod(bigZ, c(log(y) - X%*%new_beta -all_Zb-offset))
+               #     new_bvec <- newcoeffn(bigZ, kronecker(diag(x=length_uniids[k]),phi*penmat2), c(log(y) - X %*% new_beta - all_Zb - offset))
+               #     }
+               if(!(family$family[1] %in% c("gaussian"))) #"LOGNO"
                     {
                     #subworkresp <- crossprod(bigZ, diag(x=new_weights))%*%c(new_workresp - X%*%new_beta - all_Zb - offset) ## REMOVE SINCE USING C++
                     #do.bvec <- try(chol2inv(chol(as.matrix(crossprod(sqrt(new_weights)*bigZ)) + kronecker(diag(x=length_uniids[k]),penmat2))) %*% subworkresp, silent=TRUE) ## REMOVE SINCE USING C++
@@ -422,7 +427,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                 if(length(sel_nonzerob) == 0) 
                     next;
 
-                if(family$family[1] %in% c("gaussian","LOGNO")) {
+                if(family$family[1] %in% c("gaussian")) { #"LOGNO"
                     for(i in 1:length_uniids[k]) { 
                          sel.i <- which(id[[k]] == i)
                          new_ranef_covmat[[k]][sel_nonzerob,sel_nonzerob] <- new_ranef_covmat[[k]][sel_nonzerob,sel_nonzerob] + chol2inv(chol(crossprod(as.matrix(Z[[k]][sel.i,sel_nonzerob,drop=FALSE]))/phi + do.inv.ranef_covmat[sel_nonzerob,sel_nonzerob])) + tcrossprod(new_b[[k]][i,sel_nonzerob])
@@ -430,7 +435,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                     new_ranef_covmat[[k]] <- new_ranef_covmat[[k]]/length_uniids[k]
                     }
 
-                if(!(family$family[1] %in% c("gaussian","LOGNO"))) {
+                if(!(family$family[1] %in% c("gaussian"))) { #"LOGNO"
                     for(i in 1:length_uniids[k]) { 
                          sel.i <- which(id[[k]] == i)
                          new_ranef_covmat[[k]][sel_nonzerob,sel_nonzerob] <- new_ranef_covmat[[k]][sel_nonzerob,sel_nonzerob] + chol2inv(chol(crossprod(sqrt(new_weights[sel.i])*as.matrix(Z[[k]][sel.i,sel_nonzerob,drop=FALSE])) + do.inv.ranef_covmat[sel_nonzerob,sel_nonzerob])) + tcrossprod(new_b[[k]][i,sel_nonzerob])
@@ -460,8 +465,8 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                }
           if(family$family[1] == "gaussian") 
                new_phi <- mean((y - X %*% new_beta - all_Zb - offset)^2)
-          if(family$family[1] == "LOGNO") 
-               new_phi <- mean((log(y) - X %*% new_beta - all_Zb - offset)^2)
+          #if(family$family[1] == "LOGNO")
+          #     new_phi <- mean((log(y) - X %*% new_beta - all_Zb - offset)^2)
 
           if(family$family[1] == "negative.binomial") {
                new_phi <- try(1/theta.ml(y = y, mu = family$linkinv(X %*% new_beta + all_Zb + offset), limit = 100), silent = TRUE)
@@ -483,7 +488,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                 
           if(family$family[1] == "ZIP") {
                prof.logl <- function(a, y, mu) {
-                    out <- sum(dZIP(x=y, mu=mu, sigma=a, log=TRUE)) 
+                    out <- sum(.dzipois_simple(y, lambda=mu, pstr0=a, log=TRUE))
                     return(out)
                     }
                update.zeroprob <- try(suppressWarnings(optimize(f = prof.logl, interval = c(1e-4,0.9999), y = y, mu = family$mu.linkinv(X %*% new_beta+all_Zb+offset), maximum = TRUE)), silent = TRUE)
@@ -545,8 +550,8 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
                new_phi <- phi <- new_shape <- shape <- new_zeroprob <- zeroprob <- 1
                if(family$family[1] == "gaussian") 
                     new_phi <- phi <- mean((y - X %*% beta - offset)^2) 
-               if(family$family[1] == "LOGNO") 
-                    new_phi <- phi <- mean((log(y) - X %*% beta - offset)^2) 
+               #if(family$family[1] == "LOGNO")
+               #     new_phi <- phi <- mean((log(y) - X %*% beta - offset)^2)
                if(family$family[1] == "negative.binomial") 
                     new_phi <- phi <- 0.01 
                if(family$family[1] == "Gamma") 
@@ -592,10 +597,10 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
           pqllogLik <- sum(dpois(y, lambda=family$linkinv(new_etas), log=TRUE)) 
      if(family$family[1] == "negative.binomial") 
           pqllogLik <- sum(dnbinom(y, mu=family$linkinv(new_etas), size=1/new_phi, log=TRUE))
-     if(family$family[1] == "LOGNO") 
-          pqllogLik <- sum(dlnorm(y, meanlog=new_etas, sdlog=sqrt(new_phi), log=TRUE))
+     #if(family$family[1] == "LOGNO")
+     #     pqllogLik <- sum(dlnorm(y, meanlog=new_etas, sdlog=sqrt(new_phi), log=TRUE))
      if(family$family[1] == "ZIP") 
-          pqllogLik <- sum(dZIP(y, mu=family$mu.linkinv(new_etas), sigma=new_zeroprob, log=TRUE))
+          pqllogLik <- sum(.dzipois_simple(y, lambda=family$mu.linkinv(new_etas), pstr0=new_zeroprob, log=TRUE))
      loglik1 <- pqllogLik
     
      for(k in 1:length(id)) { 
@@ -642,7 +647,7 @@ rpql.default <- function(y, X, Z, id, family = gaussian(), trial.size = 1, lambd
 
 		
      if(hybrid.est) {
-          if(family$family[1] %in% c("ZIP","LOGNO")) { 
+          if(family$family[1] %in% c("ZIP")) { #"LOGNO"
                message("Hybrid estimation not possible as lme4 does not do this. Sorry! Maybe try glmmTMB?")
                out_list$hybrid <- NULL 
                }

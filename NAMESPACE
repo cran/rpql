@@ -6,14 +6,14 @@ export(rpql,
 	gendat.glmm,
 	lseq,
 	nb2,
-	summary.rpql)
+	summary.rpql,
+	ZIP)
 
 
 S3method(summary, rpql)
 S3method(rpql, default)
 
 import(mvtnorm, Matrix, MASS)
-importFrom(gamlss.dist, ZIP, dZIP, pZIP, qZIP, rZIP, LOGNO, dLOGNO, pLOGNO, qLOGNO, rLOGNO)
 importFrom(lme4, lmer, glmer, fixef, ranef, VarCorr, glmerControl, lmerControl, glmer.nb)
 
 useDynLib(rpql)

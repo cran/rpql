@@ -26,13 +26,13 @@ gendat.glmm(id, X, beta, Z, D, trial.size = 1, family = gaussian(),
 
   \item{trial.size}{The trial size if \code{family = binomial()}. Either takes a single non-zero value or a vector of non-zero values with length the same as the number of rows in \code{X}. The latter allows for differing trial sizes across responses. Defaults to 1.} 
 
-  \item{family}{The distribution for the responses in GLMM. The argument must be applied as a object of class "family". Currently supported arguments include: \code{gaussian()}, \code{poisson()}, \code{binomial()}, \code{Gamma()}, \code{nb2()} for negative binomial, \code{LOGNO()} for log-normal, and \code{ZIP()} for zero-inflated Poisson.}
+  \item{family}{The distribution for the responses in GLMM. The argument must be applied as a object of class "family". Currently supported arguments include: \code{gaussian()}, \code{poisson()}, \code{binomial()}, \code{Gamma()}, \code{nb2()} for negative binomial, and \code{ZIP()} for zero-inflated Poisson.}
 
-   \item{phi}{A non-zero value for the true variance parameter \eqn{\sigma^2} if \code{family = gaussian()}, the true variance parameter \eqn{\sigma^2} on the log scale if \code{family = LOGNO()}, or the overdispersion parameter if \code{family = nb2()}, where the negative binomial variance is parameterized as \eqn{V = \mu + \phi\mu^2}. Defaults to NULL.}
+   \item{phi}{A non-zero value for the true variance parameter \eqn{\sigma^2} if \code{family = gaussian()}, or the overdispersion parameter if \code{family = nb2()}, where the negative binomial variance is parameterized as \eqn{V = \mu + \phi\mu^2}. Defaults to NULL.}
 
    \item{shape}{A non-zero value for the shape parameter \eqn{a} if \code{family = Gamma()}, where the variance is parameterized as \eqn{V = \mu^2/a}. Defaults to NULL.}
 
-   \item{zeroprob}{A value between 0 and 1 for the probability of a structural zero if \code{family = ZIP()} for zero-inflated Poisson. Defaults to NULL.}
+   \item{zeroprob}{A value between 0 and 1 for the probability of zero inflation if \code{family = ZIP()} for zero-inflated Poisson. Defaults to NULL.}
    
   \item{upper.count}{A non-zero integer which allows the user to control the maximum value of the counts generates for datasets when \code{family = poisson()} or \code{nb2()}. When the responses are simulated, a \code{while} loop is run to ensure that all responses generated are less than or equal to \code{upper.count}. Default to \code{Inf}.}
    }

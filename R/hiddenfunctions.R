@@ -71,16 +71,16 @@ start.fixed <- function(y, X, Z, id, family = gaussian(), offset = NULL, trial.s
 		restring2 <- reformulate(restring1, response = "y")		
 		final_fit <- suppressWarnings(glmer(restring2, family = poisson(), offset = offset, data = make_dat, control = glmerControl(optCtrl=list(maxfun=10))))
 		}
-		
+
 	if(family$family[1] %in% c("Gamma")) {
 		restring2 <- reformulate(restring1, response = "y")		
 		final_fit <- suppressWarnings(glmer(restring2, family = Gamma(), offset = offset, data = make_dat, control = glmerControl(optCtrl=list(maxfun=10))))
 		}
 
-	if(family$family[1] %in% c("LOGNO")) {
-		restring2 <- as.formula(paste("log(y) ~", restring1))
-		final_fit <- suppressWarnings(lmer(restring2, REML = FALSE, offset = offset, data = make_dat, control = lmerControl(optCtrl=list(maxfun=10))))
-		}
+	#if(family$family[1] %in% c("LOGNO")) {
+	#	restring2 <- as.formula(paste("log(y) ~", restring1))
+	#	final_fit <- suppressWarnings(lmer(restring2, REML = FALSE, offset = offset, data = make_dat, control = lmerControl(optCtrl=list(maxfun=10))))
+	#	}
 	
 	if(family$family[1] %in% c("negative.binomial")) {
 		restring2 <- reformulate(restring1, response = "y")		
@@ -91,7 +91,39 @@ start.fixed <- function(y, X, Z, id, family = gaussian(), offset = NULL, trial.s
 	}
 
 
+## Simple functions for evaluating the density of and simulating from a zero-inflated Poisson distribution -- needed to remove dependency on gamlss.dist
+.dzipois_simple <- function(x, lambda, pstr0 = 0, log = FALSE) {
+	out <- numeric(length(x))
+	index0 <- (x == 0)
 
+	if (log) {
+		# Log-scale calculation to prevent numerical underflow
+		out[index0]  <- log(pstr0 + (1 - pstr0) * dpois(0, lambda))
+		out[!index0] <- log(1 - pstr0) + dpois(x[!index0], lambda, log = TRUE)
+		}
+	else {
+		# Standard probability calculation
+		out[index0]  <- pstr0 + (1 - pstr0) * dpois(0, lambda)
+		out[!index0] <- (1 - pstr0) * dpois(x[!index0], lambda)
+		}
+
+	# Simple bounds check
+	out[pstr0 < 0 | pstr0 > 1] <- NaN
+	return(out)
+	}
+
+
+.rzipois_simple <- function(n, lambda, pstr0 = 0) {
+	is_zero <- rbinom(n, size = 1, prob = pstr0)
+	poisson_counts <- rpois(n, lambda)
+	out <- ifelse(is_zero == 1, 0, poisson_counts)
+
+	if (pstr0 < 0 || pstr0 > 1) {
+		out <- rep(NaN, n)
+		}
+
+  return(out)
+	}
 # ## Evaluate values of penalty functions
 # pen.val <- function(beta,lambda,pen.type) {
 # 	if(pen.type == "lasso") out <- sum(lambda*abs(beta))

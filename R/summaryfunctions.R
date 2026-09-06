@@ -17,7 +17,7 @@ print.summary.rpql <- function(x, ...) {
           message() 
           } 
 
-    if(x$family$family[1] %in% c("gaussian","lognormal")) 
+    if(x$family$family[1] %in% c("gaussian")) #"LOGNO"
         message("Variance par ameter: ", x$phi, "\n")
     if(x$family$family[1] %in% c("negative.binomial")) 
         message("overdispersion parameter (V = mu + phi*mu^2): ", x$phi, "\n")
@@ -32,7 +32,7 @@ summary.rpql <- function(object, ...) {
      gather_output <- list(call = object$call, fixef = round(object$fixef,3), ranef = lapply(object$ranef,round,3), 
           ran.cov = lapply(object$ran.cov,round,3), logLik = round(object$logLik,3), family = object$family)
     
-    if(object$family$family[1] %in% c("gaussian","lognormal","negative.binomial")) 
+    if(object$family$family[1] %in% c("gaussian","negative.binomial")) #"LOGNO"
         gather_output$phi <- round(object$phi,3)
     if((object$family$family[1] == "Gamma")) 
         gather_output$shape <- round(object$shape,3)

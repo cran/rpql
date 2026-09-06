@@ -98,15 +98,15 @@ calc.marglogL <- function(new.data, fit, B = 1000) {
                tmp_loglik <- (dbinom(new.data$y, size=fit$trial.size, prob=family$linkinv(eta2), log = TRUE))
 		if(family$family[1] == "negative.binomial") 
                tmp_loglik <- (dnbinom(new.data$y, mu=family$linkinv(eta2), size=1/fit$phi, log = TRUE))
-		if(family$family[1] == "LOGNO") 
-               tmp_loglik <- (dlnorm(new.data$y, meanlog=eta, sdlog=sqrt(fit$phi), log=TRUE))
-		if(family$family[1] == "ZIP") 
-               tmp_loglik <- (dZIP(new.data$y, mu=family$mu.linkinv(eta2), sigma=fit$zeroprob, log=TRUE))
+		#if(family$family[1] == "LOGNO")
+        #       tmp_loglik <- (dlnorm(new.data$y, meanlog=eta, sdlog=sqrt(fit$phi), log=TRUE))
+		if(family$family[1] == "ZIP")
+               tmp_loglik <- (.dzipois_simple(new.data$y, lambda=family$mu.linkinv(eta2), pstr0=fit$zeroprob, log=TRUE))
 
 		tmp_loglik[!is.finite(tmp_loglik)] <- NA
 		loglik[k0] <- exp(sum(tmp_loglik,na.rm=TRUE))
-		} 
-	
+		}
+
 	return(mean(loglik[is.finite(loglik)]))
 	}
 
@@ -140,7 +140,7 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 	rm(get_lengths_id, get_dimD, get_ncolZ)
  
 	
-	if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","LOGNO","ZIP"))) 
+	if(!(family$family[1] %in% c("gaussian","poisson","binomial","negative.binomial","Gamma","ZIP"))) #"LOGNO"
 		stop("Current version does not permit specified family. Sorry!")
 	if(family$family[1] == "Gamma" & is.null(shape)) 
 		stop("Please supply shape parameter for the Gamma family (Variance = mu^2/shape).") 
@@ -148,8 +148,8 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 		stop("Please supply the overdispersion parameter phi for the negative binomial family; note the variance is parameterized as V = mu + phi*mu^2.") 
 	if(family$family[1] == "gaussian" & is.null(phi)) 
 		stop("Please supply the variance parameter phi for the Gaussian family; note the variance is parameterized as V = phi.") 
-	if(family$family[1] == "LOGNO" & is.null(phi)) 
-		stop("Please supply the variance parameter phi for the lognormal family; note the variance is parameterized as V = phi on the log scale).") 
+	#if(family$family[1] == "LOGNO" & is.null(phi))
+	#	stop("Please supply the variance parameter phi for the lognormal family; note the variance is parameterized as V = phi on the log scale).")
 	if(family$family[1] == "ZIP" & is.null(zeroprob)) 
 		stop("Please supply zeroprob, the probability for obtaining a structural zero, for the ZIP family.") 
 	
@@ -189,16 +189,16 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 
 	if(family$family[1] == "gaussian") 
           sim_y <- rnorm(n, mean = eta, sd=sqrt(phi))
-	if(family$family[1] == "LOGNO") 
-          sim_y <- rlnorm(n, meanlog=eta, sdlog=sqrt(phi))
+	#if(family$family[1] == "LOGNO")
+    #      sim_y <- rlnorm(n, meanlog=eta, sdlog=sqrt(phi))
 	if(family$family[1] == "Gamma") 
           sim_y <- rgamma(n, shape=shape, scale=family$linkinv(eta)/shape)
 	if(family$family[1] == "binomial") 
           sim_y <- rbinom(n, size=trial.size, prob=family$linkinv(eta))
 	for(i in 1:n) {
-		if(family$family[1] %in% c("poisson","negative.binomial","ZIP")) { 
+		if(family$family[1] %in% c("poisson","negative.binomial","ZIP")) {
 			if(family$family[1] == "ZIP") 
-                    testsim_y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+                    testsim_y <- .rzipois_simple(1, lambda=family$mu.linkinv(eta[i]), pstr0=zeroprob)
 			if(family$family[1] == "poisson") 
                     testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
 			if(family$family[1] == "negative.binomial") 
@@ -207,7 +207,7 @@ gendat.glmm <- function(id, X, beta, Z, D, trial.size = 1, family = gaussian(), 
 			
 			while(testsim_y > upper.count & try_counter < 5000) {
 				if(family$family[1] == "ZIP") 
-                         testsim_y <- rZIP(1, mu=family$mu.linkinv(eta[i]), sigma=zeroprob)
+                         testsim_y <- .rzipois_simple(1, lambda=family$mu.linkinv(eta[i]), pstr0=zeroprob)
 				if(family$family[1] == "poisson") 
                          testsim_y <- rpois(1, lambda=family$linkinv(eta[i]))
 				if(family$family[1] == "negative.binomial") 
@@ -258,12 +258,44 @@ nb2 <- function() {
 	valideta <- function(eta) TRUE
 	validmu <- function(mu) all(mu > 0)
   
-	structure(list(family = "negative.binomial", link = "log", linkfun = linkfun, linkinv = linkinv, mu.eta = mu.eta, variance = variance, valideta = valideta, validmu = validmu, name = link), class = "family")
+	structure(list(family = "negative.binomial",
+				   link = "log",
+				   linkfun = linkfun,
+				   linkinv = linkinv,
+				   mu.eta = mu.eta,
+				   variance = variance,
+				   valideta = valideta,
+				   validmu = validmu,
+				   name = link),
+				class = "family")
 	}
 
+ZIP <- function() {
+    mu.link <- "log"
+    sigma.link <- "logit"
 
-	    
-## First deriative of SCAD penalty
+    structure(list(family = c("ZIP", "Poisson Zero Inflated"),
+                   parameters = list(mu = TRUE, sigma = TRUE), 
+                   nopar = 2, 
+                   type = "Discrete", 
+                   mu.link = as.character(substitute(mu.link)), 
+                   sigma.link = as.character(substitute(sigma.link)), 
+                   mu.linkfun = stats::poisson(link = mu.link)$linkfun,
+                   sigma.linkfun = stats::binomial(link = sigma.link)$linkfun,
+                   mu.linkinv = stats::poisson(link = mu.link)$linkinv,
+                   sigma.linkinv = stats::binomial(link = sigma.link)$linkinv,
+                   mu.dr = stats::poisson(link = mu.link)$mu.eta,
+                   sigma.dr = stats::binomial(link = sigma.link)$mu.eta,
+                   mu.initial = expression(mu <- (y + mean(y))/2), sigma.initial = expression(sigma <- rep(0.1, length(y))), 
+                   mu.valid = function(mu) all(mu > 0), 
+                   sigma.valid = function(sigma) all(sigma > 0 & sigma < 1), 
+                   y.valid = function(y) all(y >= 0), 
+                   mean = function(mu, sigma) (1 - sigma) * mu, 
+                   variance = function(mu, sigma) mu * (1 - sigma) * (1 + mu * sigma)), 
+              class = c("family"))
+    }
+
+## First derivative of SCAD penalty
 scad.deriv <- function(x, lambda, a = 3.7) {
 	x2 <- abs(x)
 	help1 <- sapply(x2, function(theta) { max(a*lambda-theta,0)/((a-1)*(lambda+1e-8)) } )

@@ -37,7 +37,7 @@ rpql(y, ...)
 
   \item{x}{An object for class "rpql".}
 
-  \item{family}{The distribution for the responses in GLMM. The argument must be applied as a object of class "family". Currently supported arguments include: \code{gaussian()}, \code{poisson()}, \code{binomial()}, \code{Gamma()}, \code{nb2()} for negative binomial, \code{LOGNO()} for log-normal, and \code{ZIP()} for zero-inflated Poisson.}
+  \item{family}{The distribution for the responses in GLMM. The argument must be applied as a object of class "family". Currently supported arguments include: \code{gaussian()}, \code{poisson()}, \code{binomial()}, \code{Gamma()}, \code{nb2()} for negative binomial, and \code{ZIP()} for zero-inflated Poisson.}
 
   \item{trial.size}{The trial size if \code{family = binomial()}. Either takes a single non-zero value or a vector of non-zero values with length the same as the number of rows in \code{X}. The latter allows for differing trial sizes across responses. Defaults to 1.} 
 
@@ -143,7 +143,7 @@ An object of class "rpql" containing the following elements:
 
 \item{logLik}{The (unpenalized) PQL likelihood value at convergence.}
 
-\item{phi, shape, zeroprob}{Estimates of nuisance parameters (if appropriate), including the variance and overdispersion parameter for normal, lognormal and negative binomial families, the shape parameter for the Gamma family, and the probability of a structural zero for zero-inflated Poisson family.}
+\item{phi, shape, zeroprob}{Estimates of nuisance parameters (if appropriate), including the variance and overdispersion parameter for normal and negative binomial families, the shape parameter for the Gamma family, and the probability of a structural zero for zero-inflated Poisson family.}
 
 \item{family}{The family fitted.}
 
@@ -217,7 +217,6 @@ Maintainer: \packageMaintainer{rpql}
 ## Please note all examples below use the \code{rpqlseq} wrapper function. 
 
 library(lme4)
-library(gamlss.dist)
 
 ##-------------------------
 ## Example 1: Poisson GLMM on simulated data 
@@ -414,44 +413,5 @@ summary(fit$best.fit[[5]]) ## Second of the hybrid ICs
 ## This is at least consistent with confint(fm1)
 }
 
-
-##-------------------------
-## Example 6: GLMM with lognormal responses
-## Fixed effects selection only
-##-------------------------
-
-\dontrun{
-
-n <- 50; m <- 10; p <- 8; 
-H <- abs(outer(1:p, 1:p, "-")) 
-X <- cbind(1,rmvnorm(n*m,rep(0,p),sigma=0.5^H)); 
-Z <- X[,1:3] ## 3 random effects all of which important
-true_betas <- c(0.1,1,-1,-1,1,rep(0,p-4)) ## 5 important fixed effects
-true_D <- matrix(0,ncol(Z),ncol(Z))
-true_D[1:3,1:3] <- matrix(c(1,0.6,0.6,0.6,1,0.4,0.6,0.4,1),3,3,byrow=TRUE) 
-
-simy <- gendat.glmm(id = list(cluster=rep(1:n,each=m)), X = X, 
-	beta = true_betas, Z = list(cluster=Z), D = list(cluster=true_D), 
-	family = LOGNO(), phi = 1) 
-
-## We will use the SCAD penalty for fixed effects only with no weights
-## Note lognormal mixed models are usually hard to fit by maximum likelihood in R!
-## Hence adaptive weights are sightly hard to obtain
-
-## Note also that since random effects are not penalized, then generally 
-## the corresponding fixed effect covariates should not be penalized 
-## (at least in longitudinal studies), in keeping in line with the 
-## hierarchical principle of the effects.
-## To account for this in the above, we can use the pen.weights argument 
-## to prevent penalization of the first three fixed effect covariates
-
-lambda_seq <- lseq(1e-5,1,length=100)
-fit <- rpqlseq(y = simy$y, X = simy$X, Z = simy$Z, id = simy$id, 
-  family = LOGNO(), lambda = lambda_seq, pen.type = "scad", 
-	pen.weights = list(fixed = rep(c(0,1), c(3,ncol(X)-3))))
-
-summary(fit$best.fit[[3]])  
-# apply(fit$collect.ics, 2, which.min) ## Look at best fit chosen by different ICs
-}
 
 }
